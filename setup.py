@@ -9,7 +9,7 @@ setup(
   packages=find_packages(where='src'),
   package_dir={'': 'src'},
   extras_require={},
-  install_requires=[''],
+  install_requires=['numpy'],
   url='https://github.com/wagenerp/haksolid2',
   maintainer='Peter Wagener',
   maintainer_email='mail@peterwagener.net',

@@ -179,6 +179,13 @@ class DAGNode(DAGBase):
 		for parent in s.parents:
 			parent.children.remove(s)
 		s.parents.clear()
+	
+	def emplace(s,node):
+		node.unlink()
+		for parent in s.parents:
+			parent * node
+		s.unlink()
+		node * s
 
 	def visitDescendants(s,visitor: DAGVisitor):
 		res=visitor(s)

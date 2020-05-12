@@ -145,8 +145,13 @@ class DAGBase:
 		return s.runAdapter("__neg__",s)
 	def __pos__(s):
 		return s.runAdapter("__pos__",s)
+
 	def __invert__(s):
-		return s.runAdapter("__invert__",s)
+
+		ctx=DAGContext()
+		if len(ctx.stack)>0:
+			ctx.stack[-1] * s
+		return s
 	
 	
 	def visitDescendants(s,visitor : DAGVisitor):
@@ -246,11 +251,6 @@ class DAGNode(DAGBase):
 	def __init__(s):
 		s.parents=set()
 		s.children=list()
-
-		ctx=DAGContext()
-		if len(ctx.stack)>0:
-			ctx.stack[-1] * s
-		pass
 
 	@property
 	def node(s):

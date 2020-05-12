@@ -34,23 +34,23 @@ class DAGTest(unittest.TestCase):
 		foo = root * TestNode("expr-level1") * TestNode("expr-level2")
 
 		with root * TestNode(4):
-			TestNode(2)
-			TestNode(3)
+			~TestNode(2)
+			~TestNode(3)
 
-			nontree = TestNode("non-tree")
+			nontree = ~TestNode("non-tree")
 
 			with nontree:
-				TestNode("non-tree leaf")
+				~TestNode("non-tree leaf")
 
 		with root:
-			TestNode(5)
+			~TestNode(5)
 
 		with foo:
-			TestNode(7)
+			~TestNode(7)
 			nontree()
 
 		with foo * TestNode(8):
-			TestNode(9)
+			~TestNode(9)
 
 		visitor = PrintVisitor()
 		root.visitDescendants(visitor)
@@ -62,18 +62,18 @@ class DAGTest(unittest.TestCase):
 	def test_module(self):
 		@DAGModule
 		def mymodule():
-			TestNode("mymodule-1")
-			with TestNode("mymodule-2"):
-				DAGAnchor()
-			DAGAnchor()
+			~TestNode("mymodule-1")
+			with ~TestNode("mymodule-2"):
+				~DAGAnchor()
+			~DAGAnchor()
 
 		root = TestNode("root")
 
 		with root * mymodule():
-			TestNode("leaf")
+			~TestNode("leaf")
 
 		with root * mymodule() * TestNode("intermediate"):
-			TestNode("leaf2")
+			~TestNode("leaf2")
 
 		visitor = PrintVisitor()
 		root.visitDescendants(visitor)

@@ -34,6 +34,8 @@ class DAGVisitor:
 class DAGBase:
 	"""Common base class for DAGNode and DAGNodeConcatenator. As DAGNodeConcatenator must behave like a DAGNode in many circumstances, this functionality is abstracted away in this class."""
 
+	Adapters = list()
+
 	@property
 	def node(s):
 		raise NotImplementedError()
@@ -47,6 +49,105 @@ class DAGBase:
 
 	def __exit__(s, type, value, tb):
 		DAGContext().stack.pop()
+
+	def runAdapter(s,attr,*args,**kwargs):
+
+		for adapter in DAGBase.Adapters:
+			if not hasattr(adapter,attr): continue
+
+			res = getattr(adapter,attr)(*args,**kwargs)
+			if res is not NotImplemented:
+				return res
+		return NotImplemented
+	
+	def __add__(s,b):
+		return s.runAdapter("__add__",s,b)
+	def __sub__(s,b):
+		return s.runAdapter("__sub__",s,b)
+	def __matmul__(s,b):
+		return s.runAdapter("__matmul__",s,b)
+	def __truediv__(s,b):
+		return s.runAdapter("__truediv__",s,b)
+	def __floordiv__(s,b):
+		return s.runAdapter("__floordiv__",s,b)
+	def __mod__(s,b):
+		return s.runAdapter("__mod__",s,b)
+	def __divmod__(s,b):
+		return s.runAdapter("__divmod__",s,b)
+	def __pow__(s,b):
+		return s.runAdapter("__pow__",s,b)
+	def __lshift__(s,b):
+		return s.runAdapter("__lshift__",s,b)
+	def __rshift__(s,b):
+		return s.runAdapter("__rshift__",s,b)
+	def __and__(s,b):
+		return s.runAdapter("__and__",s,b)
+	def __xor__(s,b):
+		return s.runAdapter("__xor__",s,b)
+	def __or__(s,b):
+		return s.runAdapter("__or__",s,b)
+
+	def __radd__(s,b):
+		return s.runAdapter("__radd__",s,b)
+	def __rsub__(s,b):
+		return s.runAdapter("__rsub__",s,b)
+	def __rmatmul__(s,b):
+		return s.runAdapter("__rmatmul__",s,b)
+	def __rtruediv__(s,b):
+		return s.runAdapter("__rtruediv__",s,b)
+	def __rfloordiv__(s,b):
+		return s.runAdapter("__rfloordiv__",s,b)
+	def __rmod__(s,b):
+		return s.runAdapter("__rmod__",s,b)
+	def __rdivmod__(s,b):
+		return s.runAdapter("__rdivmod__",s,b)
+	def __rpow__(s,b):
+		return s.runAdapter("__rpow__",s,b)
+	def __rlshift__(s,b):
+		return s.runAdapter("__rlshift__",s,b)
+	def __rrshift__(s,b):
+		return s.runAdapter("__rrshift__",s,b)
+	def __rand__(s,b):
+		return s.runAdapter("__rand__",s,b)
+	def __rxor__(s,b):
+		return s.runAdapter("__rxor__",s,b)
+	def __ror__(s,b):
+		return s.runAdapter("__ror__",s,b)
+
+	def __iadd__(s,b):
+		return s.runAdapter("__iadd__",s,b)
+	def __isub__(s,b):
+		return s.runAdapter("__isub__",s,b)
+	def __imatmul__(s,b):
+		return s.runAdapter("__imatmul__",s,b)
+	def __itruediv__(s,b):
+		return s.runAdapter("__itruediv__",s,b)
+	def __ifloordiv__(s,b):
+		return s.runAdapter("__ifloordiv__",s,b)
+	def __imod__(s,b):
+		return s.runAdapter("__imod__",s,b)
+	def __idivmod__(s,b):
+		return s.runAdapter("__idivmod__",s,b)
+	def __ipow__(s,b):
+		return s.runAdapter("__ipow__",s,b)
+	def __ilshift__(s,b):
+		return s.runAdapter("__ilshift__",s,b)
+	def __irshift__(s,b):
+		return s.runAdapter("__irshift__",s,b)
+	def __iand__(s,b):
+		return s.runAdapter("__iand__",s,b)
+	def __ixor__(s,b):
+		return s.runAdapter("__ixor__",s,b)
+	def __ior__(s,b):
+		return s.runAdapter("__ior__",s,b)
+	
+	def __neg__(s):
+		return s.runAdapter("__neg__",s)
+	def __pos__(s):
+		return s.runAdapter("__pos__",s)
+	def __invert__(s):
+		return s.runAdapter("__invert__",s)
+	
 	
 	def visitDescendants(s,visitor : DAGVisitor):
 		s.node.visitDescendants(visitor)
@@ -111,6 +212,9 @@ class DAGBase:
 		res=DAGNodeConcatenator(s.node,*visitor.nodes)
 		return res
 
+def DAGAdapter(cls):
+	DAGBase.Adapters.append(cls)
+	return cls
 
 
 class DAGNodeConcatenator(DAGBase):

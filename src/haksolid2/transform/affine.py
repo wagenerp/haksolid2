@@ -39,3 +39,12 @@ def affine(p=None, ex=None, ey=None, ez=None, angs=None):
 
 def matrix(m: M):
 	return AffineTransform(m)
+
+
+class untransform(dag.DAGNode):
+	def __init__(s):
+		dag.DAGNode.__init__(s)
+
+	
+	def __str__(s):
+		return "untransform"

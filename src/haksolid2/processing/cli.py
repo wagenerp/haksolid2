@@ -1,6 +1,13 @@
 import cli
 from . import entities
 import re
+import sys
+import pyinotify
+import os
+import warnings
+import queue
+import threading
+import subprocess
 
 
 class entname_t:
@@ -21,6 +28,12 @@ lBuildFilters = cli.VariableList(
 
 vBuildArrangement = cli.Variable(entname_t, None, "a", "arrange",
                                  "build an arrangement")
+fViewArrangement = cli.Flag(
+  "v", "view-arrangement",
+  "run the arrangement (selected with -a) into a suitable viewer program")
+fWatch = cli.Flag(
+  "w", "watch",
+  "keep running in the background and re-execute when files changed")
 
 partsToBuild = set()
 arrangementToBuild = None
@@ -79,6 +92,9 @@ def check_inputs():
 				raise cli.clex(
 				  f"ambiguous arrangement expression: {vBuildArrangement.value.code}")
 			arrangementToBuild = ents[0]
+		else:
+			if fViewArrangement.value:
+				raise cli.clex("-v is useless without -a")
 
 	if True: # generate list of parts to build
 		partsToBuildDict = dict()
@@ -100,8 +116,73 @@ def climain():
 
 	global partsToBuild, arrangementToBuild
 
+	viewer = None
+
 	if arrangementToBuild is not None:
-		entities.buildEntity(arrangementToBuild)
+		res = entities.buildEntity(arrangementToBuild)
+		if fViewArrangement.value:
+			viewer = arrangementToBuild.process.watch(res)
 
 	for part in partsToBuild:
 		entities.buildEntity(part)
+
+	if fWatch.value:
+
+		# list files we need to watch for changes
+		watchlist = list()
+		mgr = pyinotify.WatchManager()
+		for mod in sys.modules.values():
+			if not hasattr(mod, "__file__"): continue
+			if mod.__file__ is None: continue
+			fn = os.path.realpath(mod.__file__)
+			if not os.path.exists(fn):
+				warnings.warn(
+				  f"cannot watch for changes in module {mod.__name__}: file could not be located\n"
+				)
+				continue
+
+			if not os.access(fn, os.W_OK): continue
+			watchlist.append(fn)
+			mgr.add_watch(fn, pyinotify.IN_MODIFY)
+
+		new_cmdline = [sys.executable] + [
+		  v for v in sys.argv
+		  if v not in {"-w", "--watch", "-v", "--view-arrangement"}
+		]
+
+		# go multithreaded:
+		#  - create and wait for viewer process (if an arrangement is created)
+		#  - wait for modification notifications
+		evq = queue.Queue()
+		EV_MODIFY = 1
+		EV_TERMINATE = 2
+
+		class EventHandler(pyinotify.ProcessEvent):
+			def process_IN_MODIFY(s, ev):
+				evq.put(EV_MODIFY)
+
+		def thrdf_viewer():
+
+			# todo: get file name from actual method call above
+			viewer.wait()
+			evq.put(EV_TERMINATE)
+
+		def thrdf_inotify():
+
+			handler = EventHandler()
+			notifier = pyinotify.Notifier(mgr, handler)
+			notifier.loop()
+			thrd_inotify = threading.Thread(target=notifier.loop)
+			thrd_inotify.start()
+			evq.put(EV_TERMINATE)
+
+		if viewer is not None:
+			threading.Thread(target=thrdf_viewer, daemon=True).start()
+		threading.Thread(target=thrdf_inotify, daemon=True).start()
+
+		# process events coming from threads above
+		while True:
+			ev = evq.get()
+			if ev == EV_TERMINATE: break
+			elif ev == EV_MODIFY:
+				subprocess.run(new_cmdline)

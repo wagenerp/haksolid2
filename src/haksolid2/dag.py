@@ -333,7 +333,7 @@ class DAGGroup(DAGNode):
 def DAGModule(func):
 	"""Function annotation turning that function into a DAG module that returns an expression usable in DAG construction. Attachments are defined explicitly via DAGAnchors positioned within the function. These anchors are removed after function termination. If no DAGAnchors are present, the DAGModule simply uses its root to append new nodes to."""
 	def wrapper(*args, **kwargs):
-		root=DAGGroup()
+		root=DAGGroup() * DAGGroup()
 		with root:
 			func(*args, **kwargs)
 		

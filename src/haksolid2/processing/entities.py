@@ -1,8 +1,51 @@
 from .. import dag
 from .. import errors
+from . import processes
 import warnings
 
 _named_entities = dict()
+
+
+class EntityRecord:
+	def __init__(s, cls, subject, name, description, process=None):
+		if process is None:
+			process = cls.DefaultProcess
+
+		if not isinstance(process,processes.ProcessBase):
+			raise TypeError(f"not a process: {process}")
+
+		s._subject = subject
+		if isinstance(subject, EntityNode):
+			s._node = subject
+		else:
+			s._node = None
+
+		s._type = cls
+		s._name = name
+		s._description = description
+		s._process = process
+
+	@property
+	def type(s):
+		return s._type
+
+	@property
+	def name(s):
+		return s._name
+
+	@property
+	def description(s):
+		return s._description
+
+	@property
+	def process(s):
+		return s._process
+
+	@property
+	def node(s):
+		if s._node is None:
+			s._node = s._subject()
+		return s._node
 
 
 class EntityDefinitionWarning(errors.HaksolidWarning):
@@ -18,7 +61,7 @@ def getEntities() -> dict:
 	return dict(_named_entities)
 
 
-def registerEntity(ent):
+def registerEntity(ent: EntityRecord):
 	if ent.process is None:
 		warnings.warn(
 		  EntityDefinitionWarning(f"no process defined for entity {ent.name}"))
@@ -32,68 +75,55 @@ def registerEntity(ent):
 		    f"entity {ent.name} redefined, ignored in entity list"))
 
 
-def buildEntity(ent):
+def buildEntity(ent: EntityRecord):
 	if ent.process is None:
 		raise EntityDefinitionError(f"process undefined for entity {ent.name}")
 
-	if isinstance(ent, EntityNode):
-		return ent.process(ent)
-	else:
-		node = ent()
-		return ent.process(node)
+	return ent.process(ent)
 
 
 class EntityType:
 	DefaultProcess = None
 
 	def __new__(cls, name: str, description=None, process=None):
-		return EntityNode(cls, name, description, process)
+		node = EntityNode()
+		rec = EntityRecord(cls, node, name, description, process)
+		registerEntity(rec)
+		return node
 
 	@classmethod
 	def module(cls, nameOrFunc, description=None, process=None):
 
-		if process is None:
-			process = cls.DefaultProcess
-
 		if isinstance(nameOrFunc, str):
 
 			def metawrapper(func):
-
-				func.type = cls
-				func.name = func.nameOrFunc
-				func.description = description
-				func.process = process
-
-				registerEntity(func)
-
 				def wrapper(*args, **kwargs):
-					root = dag.DAGGroup()
+					root = dag.DAGGroup() * dag.DAGGroup()
 					with root:
 						func(*args, **kwargs)
 					return root.makeModule()
 
+				rec = EntityRecord(cls, wrapper, nameOrFunc, description, process)
+				registerEntity(rec)
+
 			return metawrapper
 		else:
 
-			nameOrFunc.type = cls
-			nameOrFunc.name = nameOrFunc.__name__
-			nameOrFunc.description = nameOrFunc.__doc__
-			nameOrFunc.process = process
-
-			registerEntity(nameOrFunc)
-
 			def wrapper(*args, **kwargs):
-				root = dag.DAGGroup()
+				root = dag.DAGGroup() * dag.DAGGroup()
 				with root:
 					nameOrFunc(*args, **kwargs)
 				return root.makeModule()
 
+			rec = EntityRecord(cls, wrapper, nameOrFunc.__name__, nameOrFunc.__doc__,
+			                   process)
+			registerEntity(rec)
 			return wrapper
 
 	@classmethod
-	def SetDefaultProcess(cls, process):
-		if not callable(process):
-			raise TypeError(f"not callable: {process}")
+	def SetDefaultProcess(cls, process: processes.ProcessBase):
+		if not isinstance(process, processes.ProcessBase):
+			raise TypeError(f"not a process: {process}")
 		setattr(cls, "DefaultProcess", process)
 
 
@@ -106,13 +136,5 @@ class arrangement(EntityType):
 
 
 class EntityNode(dag.DAGGroup):
-	def __init__(s, entityType: EntityType, name, description=None, process=None):
-		s.type = entityType
-		if process is None:
-			process = entityType.DefaultProcess
-
-		s.name = name
-		s.description = description
-		s.process = process
-
-		registerEntity(s)
+	def __init__(s):
+		dag.DAGGroup.__init__(s)

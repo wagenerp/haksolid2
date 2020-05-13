@@ -1,5 +1,6 @@
 from .. import dag, errors
 from .. import transform, primitives, operations, metadata
+from ..math import *
 import warnings
 import numbers
 import numpy
@@ -36,52 +37,71 @@ def scad_repr(data):
 class OpenSCADcodeGen(dag.DAGVisitor):
 	def __init__(s):
 		s.code = ""
+		s.transformStack = list()
+		s.transformStack.append(M())
+		s.absTransform = M()
+
+	def addNode(s, code):
+		s.code += code
+
+	def addLeaf(s, code):
+		s.code += f"multmatrix({scad_repr(s.transformStack[-1])}) {code}"
 
 	def __call__(s, node):
 		if isinstance(node, transform.AffineTransform):
-			s.code += f"multmatrix({scad_repr(node.matrix)})"
+			s.absTransform = s.transformStack[-1] @ node.matrix
+			s.addNode("union()")
+		elif isinstance(node, transform.untransform):
+			s.absTransform = M()
+			s.addNode("union()")
 
 		elif isinstance(node, primitives.CuboidPrimitive):
-			s.code += f"cube({scad_repr(node.extent)},true)"
+			s.addLeaf(f"cube({scad_repr(node.extent)},true)")
 		elif isinstance(node, primitives.SpherePrimitive):
-			s.code += f"sphere({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})"
+			s.addLeaf(
+			  f"sphere({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
 		elif isinstance(node, primitives.CylinderPrimitive):
-			s.code += f"cylinder(d={scad_repr(node.extent.x)},h={scad_repr(node.extent.z)},$fn={scad_repr(node.segments)},center=true)"
+			s.addLeaf(
+			  f"cylinder(d={scad_repr(node.extent.x)},h={scad_repr(node.extent.z)},$fn={scad_repr(node.segments)},center=true)"
+			)
 		elif isinstance(node, primitives.RectPrimitive):
-			s.code += f"square({scad_repr(node.extent)},true)"
+			s.addLeaf(f"square({scad_repr(node.extent)},true)")
 		elif isinstance(node, primitives.CirclePrimitive):
-			s.code += f"circle({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})"
+			s.addLeaf(
+			  f"circle({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
 
 		elif isinstance(node, operations.difference):
-			s.code += f"difference()"
+			s.addNode(f"difference()")
 		elif isinstance(node, operations.intersection):
-			s.code += f"intersection()"
+			s.addNode(f"intersection()")
 		elif isinstance(node, operations.minkowski):
-			s.code += f"minkowski()"
+			s.addNode(f"minkowski()")
 		elif isinstance(node, operations.offset):
 			if node.round:
-				s.code += f"offset(r={scad_repr(node.offset)})"
+				s.addNode(f"offset(r={scad_repr(node.offset)})")
 			else:
-				s.code += f"offset(delta={scad_repr(node.offset)})"
+				s.addNode(f"offset(delta={scad_repr(node.offset)})")
 
 		elif isinstance(node, operations.LinearExtrude):
-			s.code += f"linear_extrude(height={scad_repr(node.amount)},center=true)"
+			s.addNode(f"linear_extrude(height={scad_repr(node.amount)},center=true)")
 		elif isinstance(node, operations.rotate_extrude):
-			s.code += f"rotate_extrude()"
-		
+			s.addNode(f"rotate_extrude()")
+
 		elif isinstance(node, metadata.color):
-			color=list(node.getColor())+[node.alpha]
-			s.code+=f"color({scad_repr(color)})"
+			color = list(node.getColor()) + [node.alpha]
+			s.addNode(f"color({scad_repr(color)})")
 
 		elif isinstance(node, dag.DAGGroup):
-			s.code += "union()"
+			s.addNode("union()")
 		else:
 			warnings.warn(
 			  errors.UnsupportedFeatureWarning(f"OpenSCAD cannot handle {node}"))
 			return False
 
 	def descent(s):
+		s.transformStack.append(M(s.absTransform))
 		s.code += "{"
 
 	def ascend(s):
+		s.absTransform = s.transformStack.pop()
 		s.code += "}"

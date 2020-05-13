@@ -95,6 +95,24 @@ class M(numpy.ndarray):
 	                     "(a([1-9])([1-9])|a([1-9][0-9]*)_([1-9][0-9]*))")
 
 	def __new__(s, *args):
+
+		if len(args) == 1 and isinstance(args[0], numpy.ndarray):
+			A = args[0]
+			n = len(A)
+			m = len(A[0])
+			values = list()
+			for row in A:
+				values += [float(v) for v in row]
+
+			return numpy.ndarray.__new__(s,
+			                             shape=(
+			                               n,
+			                               m,
+			                             ),
+			                             buffer=numpy.array(values),
+			                             dtype=float)
+
+			return numpy.ndarray.__new__(s, args[0])
 		if len(args) < 1:
 			args = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
 		n = len(args)

@@ -1,5 +1,5 @@
 from .. import dag, errors
-from .. import transform, primitives, operations
+from .. import transform, primitives, operations, metadata
 import warnings
 import numbers
 import numpy
@@ -68,6 +68,10 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			s.code += f"linear_extrude(height={scad_repr(node.amount)},center=true)"
 		elif isinstance(node, operations.rotate_extrude):
 			s.code += f"rotate_extrude()"
+		
+		elif isinstance(node, metadata.color):
+			color=list(node.getColor())+[node.alpha]
+			s.code+=f"color({scad_repr(color)})"
 
 		elif isinstance(node, dag.DAGGroup):
 			s.code += "union()"

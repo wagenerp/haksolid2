@@ -1,6 +1,7 @@
 from ..primitives import *
 from ..transform import *
 from ..operations import *
+from ..metadata import *
 from ..processing import *
 from ..openscad import *
 from ..usability import *

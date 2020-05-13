@@ -4,6 +4,7 @@ from . import usability
 from . import transform
 from . import primitives
 from . import operations
+from . import metadata
 from . import errors
 from . import processing
 from . import openscad

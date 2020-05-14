@@ -1,5 +1,6 @@
 from .. import dag
 from ..math import *
+from .. import usability
 
 
 class AffineTransform(dag.DAGNode):
@@ -37,6 +38,13 @@ def affine(p=None, ex=None, ey=None, ez=None, angs=None):
 	return AffineTransform(M.Transform(p, ex, ey, ez, angs))
 
 
+def mirror(x=None, y=None, z=None):
+
+	axis = usability.getFlexibleAxis3(x, y, z)
+
+	return AffineTransform(M.Reflection(axis))
+
+
 def matrix(m: M):
 	return AffineTransform(m)
 
@@ -45,6 +53,5 @@ class untransform(dag.DAGNode):
 	def __init__(s):
 		dag.DAGNode.__init__(s)
 
-	
 	def __str__(s):
 		return "untransform"

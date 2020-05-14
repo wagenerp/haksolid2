@@ -1,1 +1,1 @@
-from .affine import AffineTransform, translate, scale, rotate, affine, matrix, untransform
+from .affine import AffineTransform, translate, scale, rotate, affine, matrix, untransform, mirror

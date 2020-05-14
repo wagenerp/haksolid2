@@ -13,15 +13,16 @@ import shutil
 
 
 class OpenSCADSource(processing.ProcessBase):
-	def __init__(s, useClangFormat=False, *args, **kwargs):
+	def __init__(s, useClangFormat=False, layerFilter=None, *args, **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
+		s.layerFilter = layerFilter
 		s.useClangFormat = useClangFormat
 
 	def __call__(s, ent: processing.EntityRecord):
 
 		res = processing.ProcessResults()
 
-		visitor = codegen.OpenSCADcodeGen()
+		visitor = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter)
 		ent.node.visitDescendants(visitor)
 
 		fn_scad = os.path.join(s.getOutputDirectory(True), ent.name + ".scad")
@@ -69,18 +70,19 @@ class OpenSCADSource(processing.ProcessBase):
 
 
 class OpenSCADBuild(processing.ProcessBase):
-	def __init__(s, *args, **kwargs):
+	def __init__(s, layerFilter=None, *args, **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
+		s.layerFilter = layerFilter
 		s.useClangFormat = False
 
 	def __call__(s, ent: processing.EntityRecord):
 
 		res = processing.ProcessResults()
 
-		vcodegen = codegen.OpenSCADcodeGen()
+		vcodegen = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter)
 		ent.node.visitDescendants(vcodegen)
 
-		vdim=metadata.DimensionVisitor()
+		vdim = metadata.DimensionVisitor()
 		ent.node.visitDescendants(vdim)
 		if vdim.has3d or vdim.empty:
 			extension = ".stl"

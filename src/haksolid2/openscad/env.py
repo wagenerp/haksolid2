@@ -6,6 +6,9 @@ from ..processing import *
 from ..openscad import *
 from ..usability import *
 from ..processing.cli import climain
+from ..dag import DAGModule
 
 part.SetDefaultProcess(OpenSCADBuild())
-arrangement.SetDefaultProcess(OpenSCADSource(useClangFormat=True))
+arrangement.SetDefaultProcess(
+  OpenSCADSource(useClangFormat=True,
+                 layerFilter=ClassLayerFilter(previewLayer)))

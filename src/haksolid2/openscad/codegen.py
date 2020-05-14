@@ -35,11 +35,12 @@ def scad_repr(data):
 
 
 class OpenSCADcodeGen(dag.DAGVisitor):
-	def __init__(s):
+	def __init__(s, layerFilter: metadata.LayerFilter = None):
 		s.code = ""
 		s.transformStack = list()
 		s.transformStack.append(M())
 		s.absTransform = M()
+		s.layerFilter = layerFilter
 
 	def addNode(s, code):
 		s.code += code
@@ -48,6 +49,7 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 		s.code += f"multmatrix({scad_repr(s.transformStack[-1])}) {code}"
 
 	def __call__(s, node):
+		print(node)
 		if isinstance(node, transform.AffineTransform):
 			s.absTransform = s.transformStack[-1] @ node.matrix
 			s.addNode("union()")
@@ -91,6 +93,11 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			color = list(node.getColor()) + [node.alpha]
 			s.addNode(f"color({scad_repr(color)})")
 
+		elif isinstance(node, metadata.DAGLayer):
+			if s.layerFilter is None or not s.layerFilter(node): return False
+			color = list(node.color) + [node.alpha]
+			s.addNode(f"color({scad_repr(color)})")
+
 		elif isinstance(node, dag.DAGGroup):
 			s.addNode("union()")
 		else:
@@ -101,7 +108,10 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 	def descent(s):
 		s.transformStack.append(M(s.absTransform))
 		s.code += "{"
+		print("++ ",s.absTransform)
 
 	def ascend(s):
-		s.absTransform = s.transformStack.pop()
-		s.code += "}"
+		s.transformStack.pop()
+		s.absTransform = s.transformStack[-1]
+		s.code += "};"
+		print("-- ",s.absTransform)

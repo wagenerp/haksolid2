@@ -1,1 +1,1 @@
-from .attributePatterns import BoxAnchorPattern, CylinderAnchorPattern
+from .attributePatterns import AttributePattern, BoxAnchorPattern, CylinderAnchorPattern

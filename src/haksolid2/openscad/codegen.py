@@ -83,6 +83,8 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 				s.addNode(f"offset(r={scad_repr(node.offset)})")
 			else:
 				s.addNode(f"offset(delta={scad_repr(node.offset)})")
+		elif isinstance(node, operations.Hull):
+			s.addNode(f"hull()")
 
 		elif isinstance(node, operations.LinearExtrude):
 			s.addNode(f"linear_extrude(height={scad_repr(node.amount)},center=true)")

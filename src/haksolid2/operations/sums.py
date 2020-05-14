@@ -1,4 +1,6 @@
 from . import base
+from .. import dag
+from .. import usability
 
 
 class SumOperation(base.DAGOperation):
@@ -12,5 +14,13 @@ class minkowski(SumOperation):
 
 class offset(SumOperation):
 	def __init__(s, offset, round=True):
+		SumOperation.__init__(s)
 		s.offset = offset
 		s.round = round
+
+
+class Hull(SumOperation):
+	pass
+
+
+hull = usability.OptionalConditionalNode(Hull, dag.DAGGroup)

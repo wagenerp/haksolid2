@@ -59,8 +59,9 @@ class SpherePrimitive(Primitive3D):
 
 
 class CylinderPrimitive(Primitive3D):
-	def __init__(s, r=None, h=None, d=None, segments=32):
+	def __init__(s, r=None, h=None, d=None, segments=32, explicit=False):
 		s.segments = segments
+		s.explicit = explicit
 
 		if r is None and d is None: raise ValueError("missing radius / diameter")
 		if r is not None and d is not None: raise ValueError("ambiguous radius")
@@ -91,8 +92,9 @@ class RectPrimitive(Primitive2D):
 
 
 class CirclePrimitive(Primitive2D):
-	def __init__(s, r=None, d=None, segments=32):
+	def __init__(s, r=None, d=None, segments=32, explicit=False):
 		s.segments = segments
+		s.explicit = explicit
 
 		if r is None and d is None: raise ValueError("missing radius / diameter")
 		if r is not None and d is not None: raise ValueError("ambiguous radius")
@@ -115,8 +117,29 @@ class PrimitiveFactory:
 		return transform.translate(-0.5 * node.extent * anchor) * node
 
 
+class BoxAnchorExplicitPattern(usability.BoxAnchorPattern):
+	def __init__(s, target, defaultAnchor=V(0, 0, 0), explicit=False):
+		usability.BoxAnchorPattern.__init__(s, target, defaultAnchor)
+		s.explicit = False
+
+	def clone(s):
+		return BoxAnchorExplicitPattern(s.target, s.anchor, s.explicit)
+
+	def augmentArguments(s, args: list, kwargs: dict):
+		kwargs["explicit"] = s.explicit
+		usability.BoxAnchorPattern.augmentArguments(s, args, kwargs)
+
+	def consumePrefix(s, attr):
+		sym = attr[:1]
+		if sym == "e":
+			if s.explicit: raise AttributeError("duplicate explicit setting")
+			s.explicit = True
+			return 1
+		return usability.BoxAnchorPattern.consumePrefix(s, attr)
+
+
 cuboid = usability.BoxAnchorPattern(PrimitiveFactory(CuboidPrimitive))
 sphere = usability.BoxAnchorPattern(PrimitiveFactory(SpherePrimitive))
-cylinder = usability.BoxAnchorPattern(PrimitiveFactory(CylinderPrimitive))
+cylinder = BoxAnchorExplicitPattern(PrimitiveFactory(CylinderPrimitive))
 rect = usability.BoxAnchorPattern(PrimitiveFactory(RectPrimitive))
-circle = usability.BoxAnchorPattern(PrimitiveFactory(CirclePrimitive))
+circle = BoxAnchorExplicitPattern(PrimitiveFactory(CirclePrimitive))

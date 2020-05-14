@@ -13,7 +13,17 @@ class Primitive(dag.DAGNode):
 		return f"{s.__class__.__name__}({s.extent})"
 
 
-class CuboidPrimitive(Primitive):
+class Primitive2D(dag.DAGNode):
+	def __init__(s, extent):
+		Primitive.__init__(s, extent)
+
+
+class Primitive3D(dag.DAGNode):
+	def __init__(s, extent):
+		Primitive.__init__(s, extent)
+
+
+class CuboidPrimitive(Primitive3D):
 	def __init__(s, x=None, y=None, z=None):
 		extent = None
 		if isinstance(x, Iterable):
@@ -30,10 +40,10 @@ class CuboidPrimitive(Primitive):
 				return ValueError("missing extent coordinate")
 			extent = V(x, y, z)
 
-		Primitive.__init__(s, extent)
+		Primitive3D.__init__(s, extent)
 
 
-class SpherePrimitive(Primitive):
+class SpherePrimitive(Primitive3D):
 	def __init__(s, r=None, d=None, segments=32):
 		s.segments = segments
 
@@ -45,10 +55,10 @@ class SpherePrimitive(Primitive):
 		else:
 			extent = V(r, r, r) * 2
 
-		Primitive.__init__(s, extent)
+		Primitive3D.__init__(s, extent)
 
 
-class CylinderPrimitive(Primitive):
+class CylinderPrimitive(Primitive3D):
 	def __init__(s, r=None, h=None, d=None, segments=32):
 		s.segments = segments
 
@@ -61,10 +71,10 @@ class CylinderPrimitive(Primitive):
 		else:
 			extent = V(r * 2, r * 2, h)
 
-		Primitive.__init__(s, extent)
+		Primitive3D.__init__(s, extent)
 
 
-class RectPrimitive(Primitive):
+class RectPrimitive(Primitive2D):
 	def __init__(s, x=None, y=None):
 		extent = None
 		if isinstance(x, Iterable):
@@ -77,10 +87,10 @@ class RectPrimitive(Primitive):
 			if y is None: y = x
 			extent = V(x, y, 0)
 
-		Primitive.__init__(s, extent)
+		Primitive2D.__init__(s, extent)
 
 
-class CirclePrimitive(Primitive):
+class CirclePrimitive(Primitive2D):
 	def __init__(s, r=None, d=None, segments=32):
 		s.segments = segments
 

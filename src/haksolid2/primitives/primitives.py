@@ -110,7 +110,7 @@ class PrimitiveFactory:
 		s.primitive = primitive
 
 	def __call__(s, anchor, *args, **kwargs):
-		node = s.primitive(*args, *kwargs)
+		node = s.primitive(*args, **kwargs)
 		node.unlink()
 		return transform.translate(-0.5 * node.extent * anchor) * node
 

@@ -65,10 +65,10 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			  f"cylinder(d={scad_repr(node.extent.x)},h={scad_repr(node.extent.z)},$fn={scad_repr(node.segments)},center=true)"
 			)
 		elif isinstance(node, primitives.RectPrimitive):
-			s.addLeaf(f"square({scad_repr(node.extent)},true)")
+			s.addLeaf(f"square({scad_repr(node.extent.xy)},true)")
 		elif isinstance(node, primitives.CirclePrimitive):
 			s.addLeaf(
-			  f"circle({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
+			  f"circle(d={scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
 
 		elif isinstance(node, operations.difference):
 			s.addNode(f"difference()")

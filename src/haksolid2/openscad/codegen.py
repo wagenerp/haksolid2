@@ -58,19 +58,117 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			s.addNode("union()")
 
 		elif isinstance(node, primitives.CuboidPrimitive):
-			s.addLeaf(f"cube({scad_repr(node.extent)},true)")
+			if node.roundingLevel == 0:
+				s.addLeaf(f"cube({scad_repr(node.extent)},true)")
+			elif node.roundingLevel == 1:
+				code = (
+				  f"linear_extrude(height={scad_repr(node.extent.z)},center=true) hull() {{"
+				)
+
+				dx = node.extent.x * 0.5 - node.roundingRadius
+				dy = node.extent.y * 0.5 - node.roundingRadius
+				for x in (-1, 1):
+					for y in (-1, 1):
+						code += (
+						  f"translate([{scad_repr(x*dx)},{scad_repr(y*dy)}]) circle(r={scad_repr(node.roundingRadius)},$fn={scad_repr(node.roundingSegments)});"
+						)
+
+				code += "}"
+				s.addLeaf(code)
+
+			elif node.roundingLevel == 2:
+				code = (f"hull() {{")
+
+				dx = node.extent.x * 0.5 - node.roundingRadius
+				dy = node.extent.y * 0.5 - node.roundingRadius
+				dz = node.extent.z * 0.5 - node.roundingRadius
+				for x in (-1, 1):
+					for y in (-1, 1):
+						for z in (-1, 1):
+							code += f"""
+							  translate([
+									{scad_repr(x*dx)},{scad_repr(y*dy)},{scad_repr(z*dz)}]) 
+									sphere(
+										r={scad_repr(node.roundingRadius)},
+										$fn={scad_repr(node.roundingSegments)});
+								"""
+
+				code += "}"
+				s.addLeaf(code)
+				pass
+
 		elif isinstance(node, primitives.SpherePrimitive):
 			s.addLeaf(
 			  f"sphere({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
 		elif isinstance(node, primitives.CylinderPrimitive):
-			s.addLeaf(
-			  f"cylinder(d={scad_repr(node.extent.x)},h={scad_repr(node.extent.z)},$fn={scad_repr(node.segments)},center=true)"
-			)
+			if node.roundingLevel == 0:
+				s.addLeaf(
+				  f"cylinder(d={scad_repr(node.extent.x)},h={scad_repr(node.extent.z)},$fn={scad_repr(node.segments)},center=true)"
+				)
+			elif node.roundingLevel == 1:
+				x1 = node.extent.x * 0.5 - node.roundingRadius
+				code = f"""
+				  rotate_extrude($fn={scad_repr(node.segments)}) 
+						translate([0,{scad_repr(-node.extent.z*0.5)}]) 
+							hull() {{
+								square([0.01,{scad_repr(node.extent.z)}]);
+								translate([{scad_repr(x1)},{scad_repr(node.roundingRadius)}])
+									circle(
+										r={scad_repr(node.roundingRadius)},
+										$fn={scad_repr(node.roundingSegments)});
+								translate([
+									{scad_repr(x1)},
+									{scad_repr(node.extent.z-node.roundingRadius)}]) 
+									circle(
+										r={scad_repr(node.roundingRadius)},
+										$fn={scad_repr(node.roundingSegments)});
+							}}
+					"""
+				s.addLeaf(code)
+			elif node.roundingLevel == 2:
+				ida = 360 / node.segments
+				r = node.extent.x * 0.5 - node.roundingRadius / cos(pi / node.segments)
+				code = "hull() {"
+				z = node.extent.z * 0.5 - node.roundingRadius
+				for z in (-z, z):
+					for i in range(node.segments):
+						code += f"""
+							translate({scad_repr(V.Cylinder(i*ida,r,z))}) 
+								sphere(r={node.roundingRadius},$fn={node.roundingSegments});"""
+				code += "}"
+				s.addLeaf(code)
 		elif isinstance(node, primitives.RectPrimitive):
-			s.addLeaf(f"square({scad_repr(node.extent.xy)},true)")
+			if node.roundingLevel == 0:
+				s.addLeaf(f"square({scad_repr(node.extent.xy)},true)")
+			elif node.roundingLevel == 1:
+				code = (f"hull() {{")
+
+				dx = node.extent.x * 0.5 - node.roundingRadius
+				dy = node.extent.y * 0.5 - node.roundingRadius
+				for x in (-1, 1):
+					for y in (-1, 1):
+						code += (
+						  f"translate([{scad_repr(x*dx)},{scad_repr(y*dy)}]) circle(r={scad_repr(node.roundingRadius)},$fn={scad_repr(node.roundingSegments)});"
+						)
+
+				code += "}"
+				s.addLeaf(code)
+
 		elif isinstance(node, primitives.CirclePrimitive):
-			s.addLeaf(
-			  f"circle(d={scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
+			if node.roundingLevel == 0:
+				s.addLeaf(
+				  f"circle(d={scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})"
+				)
+			elif node.roundingLevel == 1:
+				ida = 360 / node.segments
+				r = node.extent.x * 0.5 - node.roundingRadius / cos(pi / node.segments)
+				code = "hull() {"
+				for i in range(node.segments):
+					code += f"""
+						translate({scad_repr(V.Cylinder(i*ida,r))}) 
+							circle(r={node.roundingRadius},$fn={node.roundingSegments});"""
+				code += "}"
+				s.addLeaf(code)
 
 		elif isinstance(node, operations.difference):
 			s.addNode(f"difference()")
@@ -110,10 +208,10 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 	def descent(s):
 		s.transformStack.append(M(s.absTransform))
 		s.code += "{"
-		print("++ ",s.absTransform)
+		print("++ ", s.absTransform)
 
 	def ascend(s):
 		s.transformStack.pop()
 		s.absTransform = s.transformStack[-1]
 		s.code += "};"
-		print("-- ",s.absTransform)
+		print("-- ", s.absTransform)

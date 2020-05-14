@@ -40,6 +40,9 @@ class DAGBase:
 	def node(s):
 		raise NotImplementedError()
 
+	def __str__(s):
+		return s.__class__.__name__
+		
 	def __call__(s):
 		return s.node()
 

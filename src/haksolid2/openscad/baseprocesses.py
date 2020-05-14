@@ -1,6 +1,7 @@
 from .. import dag
 from .. import processing
 from .. import errors
+from .. import metadata
 from . import codegen
 import warnings
 
@@ -76,11 +77,15 @@ class OpenSCADBuild(processing.ProcessBase):
 
 		res = processing.ProcessResults()
 
-		visitor = codegen.OpenSCADcodeGen()
-		ent.node.visitDescendants(visitor)
+		vcodegen = codegen.OpenSCADcodeGen()
+		ent.node.visitDescendants(vcodegen)
 
-		# todo: determine dimensions of geometry and choose format accordingly
-		extension = ".stl"
+		vdim=metadata.DimensionVisitor()
+		ent.node.visitDescendants(vdim)
+		if vdim.has3d or vdim.empty:
+			extension = ".stl"
+		else:
+			extension = ".svg"
 
 		fn_out = os.path.join(s.getOutputDirectory(True), ent.name + extension)
 
@@ -89,7 +94,7 @@ class OpenSCADBuild(processing.ProcessBase):
 		try:
 			os.chdir(fn_tmp)
 			with open("code.scad", "w") as f:
-				f.write(visitor.code)
+				f.write(vcodegen.code)
 
 			p = subprocess.Popen(["openscad", "-o", fn_out, "code.scad"],
 			                     stdout=subprocess.PIPE,

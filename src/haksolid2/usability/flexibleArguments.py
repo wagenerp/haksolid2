@@ -33,6 +33,7 @@ def getFlexibleAxis3(x, y, z):
 		axis = V(x, y, z)
 	return axis
 
+
 def getFlexibleExtent2(x, y):
 
 	if isinstance(x, Iterable):
@@ -56,3 +57,36 @@ def getFlexibleRadius(r, d):
 		return d * 0.5
 	else:
 		return r
+
+
+def getFlexibleMatrix(p=None, n=None, u=None, v=None, m=None, rectify=True):
+
+	if m is None:
+		if p is None: p = V(0, 0, 0)
+		if n is not None and u is not None and v is None:
+			v = n.cross(u)
+		elif n is not None and u is None and v is not None:
+			u = v.cross(n)
+		elif n is None and u is not None and v is not None:
+			n = u.cross(v)
+		elif n is not None:
+			u = V(0, 1, 0).cross(n)
+			v = n.cross(u)
+		elif u is not None:
+			n = u.cross(V(0, 1, 0))
+			v = n.cross(u)
+		elif v is not None:
+			n = V(1, 0, 0).cross(v)
+			u = v.cross(n)
+		else:
+			n = V(0, 0, 1)
+			u = V(1, 0, 0)
+			v = V(0, 1, 0)
+		if rectify:
+			v = n.cross(u).normal
+			u = v.cross(n).normal
+			n = n.normal
+
+		m = M((u.x, v.x, n.x, p.x), (u.y, v.y, n.y, p.y), (u.z, v.z, n.z, p.z),
+		      (0, 0, 0, 1))
+	return m

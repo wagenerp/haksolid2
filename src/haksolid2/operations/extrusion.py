@@ -1,6 +1,7 @@
 from .. import dag
 from .. import usability
 from .. import transform
+from .. import primitives
 from ..math import *
 
 
@@ -48,6 +49,38 @@ class matrix_extrude(MatrixExtrusionNode):
 			yield T
 			T = s._matrix @ T
 		yield T
+
+
+
+class path_extrude(MatrixExtrusionNode):
+	def __init__(s, path, protrusion=None):
+		MatrixExtrusionNode.__init__(s)
+
+		s._path = path
+		s._protrusion = protrusion
+
+	def augment(s, iterator):
+		first = True
+		m0 = None
+		for m in iterator:
+			if m is None:
+				if not first and s._protrusion is not None: # protrude out the end
+					yield M.Translation(m0.col3.xyz.normal * s._protrusion) @ m0
+				first = True
+				yield m
+				continue
+			if first:
+				first = False
+				if s._protrusion is not None:
+					yield M.Translation((-s._protrusion) * m.col3.xyz.normal) @ m
+			yield m
+			m0 = m
+
+		if not first and s._protrusion is not None: # protrude out the end
+			yield M.Translation(m0.col3.xyz.normal * s._protrusion) @ m0
+
+	def matrices(s):
+		yield from s.augment(s._path.generate());
 
 
 class CylinderOffsetFactory:

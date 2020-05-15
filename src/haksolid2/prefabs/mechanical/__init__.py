@@ -1,1 +1,1 @@
-from . import threads, springs
+from . import threads, springs, gears

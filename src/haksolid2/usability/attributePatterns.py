@@ -39,7 +39,8 @@ class AttributePattern:
 
 		while len(attr) > 0:
 			n = t.consumePrefix(attr)
-			if n is None or n <= 0: raise AttributeError("invalid sequence")
+			if n is None or n <= 0:
+				raise AttributeError(f"invalid sequence ({attr}, {n})")
 			attr = attr[n:]
 
 		return t

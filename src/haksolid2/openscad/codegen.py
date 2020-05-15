@@ -168,6 +168,9 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 							circle(r={node.roundingRadius},$fn={node.roundingSegments});"""
 				code += "}"
 				s.addLeaf(code)
+		
+		elif isinstance(node, primitives.polygon):
+			s.addLeaf(f"polygon(points={scad_repr(node.points)})")
 
 		elif isinstance(node, operations.difference):
 			s.addNode(f"difference()")
@@ -203,7 +206,6 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 
 			children_code+="}"
 
-			children_code="square(10);"
 
 			T0=None
 			for T1 in node.matrices():

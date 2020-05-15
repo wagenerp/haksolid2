@@ -112,7 +112,22 @@ class CirclePrimitive(Primitive2D):
 		processRoundingData(s, roundingLevel, r2, 1 if explicit else 0,
 		                    roundingSegments)
 
-		Primitive.__init__(s, extent)
+		Primitive2D.__init__(s, extent)
+
+
+class polygon(Primitive2D):
+	def __init__(s, points, *args):
+		if len(args) > 0:
+			s.points = list()
+			s.points.append(V(points[0], points[1]))
+			for p in args:
+				s.points.append(V(p[0], p[1]))
+		else:
+			s.points = list(V(p[0], p[1]) for p in points)
+
+		xmax = max(p.x for p in s.points)
+		ymax = max(p.y for p in s.points)
+		Primitive2D.__init__(s, V(xmax, ymax, 0))
 
 
 class PrimitiveFactory:

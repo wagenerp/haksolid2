@@ -5,6 +5,7 @@ from ..metadata import *
 from ..processing import *
 from ..openscad import *
 from ..usability import *
+from ..math import *
 from ..processing.cli import climain
 from ..dag import DAGModule
 

@@ -49,7 +49,6 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 		s.code += f"multmatrix({scad_repr(s.transformStack[-1])}) {code}"
 
 	def __call__(s, node):
-		print(node)
 		if isinstance(node, transform.AffineTransform):
 			s.absTransform = s.transformStack[-1] @ node.matrix
 			s.addNode("union()")
@@ -185,9 +184,41 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			s.addNode(f"hull()")
 
 		elif isinstance(node, operations.LinearExtrude):
-			s.addNode(f"linear_extrude(height={scad_repr(node.amount)},center=true)")
+			s.addLeaf(f"linear_extrude(height={scad_repr(node.amount)},center=true)")
+			s.absTransform=M()
 		elif isinstance(node, operations.rotate_extrude):
-			s.addNode(f"rotate_extrude()")
+			s.addLeaf(f"rotate_extrude()")
+			s.absTransform=M()
+		elif isinstance(node, operations.MatrixExtrusionNode):
+			s.addLeaf(f"union()")
+			s.code+="{"
+			s.absTransform=M()
+
+			children_code="union() {"
+			for child in node.children:
+				sub=OpenSCADcodeGen(layerFilter=s.layerFilter)
+				child.visitDescendants(sub)
+				children_code+=sub.code
+				
+
+			children_code+="}"
+
+			children_code="square(10);"
+
+			T0=None
+			for T1 in node.matrices():
+				if T0 is not None:
+					s.code+=f"""
+						hull() {{ 
+							multmatrix({scad_repr(T0)}) 
+								linear_extrude(height=1e-99,center=true) {children_code};
+							multmatrix({scad_repr(T1)}) 
+								linear_extrude(height=1e-99,center=true) {children_code};
+						}}"""
+					
+				T0=T1
+			s.code +="}"
+			return False
 
 		elif isinstance(node, metadata.color):
 			color = list(node.getColor()) + [node.alpha]
@@ -208,10 +239,8 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 	def descent(s):
 		s.transformStack.append(M(s.absTransform))
 		s.code += "{"
-		print("++ ", s.absTransform)
 
 	def ascend(s):
 		s.transformStack.pop()
 		s.absTransform = s.transformStack[-1]
 		s.code += "};"
-		print("-- ", s.absTransform)

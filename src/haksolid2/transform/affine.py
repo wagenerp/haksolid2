@@ -26,12 +26,14 @@ def _scale(X=1, Y=1, Z=1):
 		return AffineTransform(M.Scale((X, Y, Z)))
 
 
-def _rotate(a=0, b=0, c=0):
+def _rotate(a=0, b=None, c=None):
 
 	if isinstance(a, Iterable):
 		return AffineTransform(M.Rotation(a))
+	elif b is None and c is None:
+		return AffineTransform(M.Rotation((0,0,a)))
 	else:
-		return AffineTransform(M.Rotation((a, b, c)))
+		return AffineTransform(M.Rotation((a, b or 0, c or 0)))
 
 
 def _rebase(p=None, ex=None, ey=None, ez=None, angs=None):

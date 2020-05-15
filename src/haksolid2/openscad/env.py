@@ -8,6 +8,7 @@ from ..usability import *
 from ..math import *
 from ..processing.cli import climain
 from ..dag import DAGModule
+from ..prefabs import *
 
 part.SetDefaultProcess(OpenSCADBuild())
 arrangement.SetDefaultProcess(

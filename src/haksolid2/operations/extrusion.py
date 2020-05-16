@@ -15,11 +15,13 @@ class LinearExtrude(ExtrusionNode):
 		ExtrusionNode.__init__(s)
 		s.amount = amount
 
+	def __str__(s):
+		return f"{s.__class__.__name__}({s.amount})"
+
 
 class rotate_extrude(ExtrusionNode):
-	def __init__(s, amount):
+	def __init__(s):
 		ExtrusionNode.__init__(s)
-		s.amount = amount
 
 
 class MatrixExtrusionNode(ExtrusionNode):
@@ -51,7 +53,6 @@ class matrix_extrude(MatrixExtrusionNode):
 		yield T
 
 
-
 class path_extrude(MatrixExtrusionNode):
 	def __init__(s, path, protrusion=None):
 		MatrixExtrusionNode.__init__(s)
@@ -80,7 +81,7 @@ class path_extrude(MatrixExtrusionNode):
 			yield M.Translation(m0.col3.xyz.normal * s._protrusion) @ m0
 
 	def matrices(s):
-		yield from s.augment(s._path.generate());
+		yield from s.augment(s._path.generate())
 
 
 class CylinderOffsetFactory:

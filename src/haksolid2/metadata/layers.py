@@ -8,6 +8,9 @@ class DAGLayer(dag.DAGGroup):
 
 	def __init__(s):
 		dag.DAGGroup.__init__(s)
+	
+	def __str__(s):
+		return f"{s.__class__.__name__}({s.color} {s.alpha*100}%)"
 
 
 class previewLayer(DAGLayer):

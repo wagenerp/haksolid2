@@ -325,13 +325,9 @@ class DAGLeaf(DAGNode):
 
 class DAGAnchor(DAGLeaf):
 	"""Signifies locations within a (sub-)DAG to which new children are to be connected to when used as a module."""
-	def __str__(s):
-		return "DAGAnchor"
 
 class DAGGroup(DAGNode):
 	"""Generic grouping node to be ignored by all visitors."""
-	def __str__(s):
-		return "DAGGroup"
 
 def DAGModule(func):
 	"""Function annotation turning that function into a DAG module that returns an expression usable in DAG construction. Attachments are defined explicitly via DAGAnchors positioned within the function. These anchors are removed after function termination. If no DAGAnchors are present, the DAGModule simply uses its root to append new nodes to."""

@@ -52,6 +52,12 @@ class CuboidPrimitive(Primitive3D):
 
 		Primitive3D.__init__(s, extent)
 
+	def __str__(s):
+		if s.roundingLevel > 0:
+			return f"cuboid({s.extent} {s.roundingLevel} {s.roundingRadius})"
+		else:
+			return f"cuboid({s.extent})"
+
 
 class SpherePrimitive(Primitive3D):
 	def __init__(s, r=None, d=None, segments=32):
@@ -61,6 +67,9 @@ class SpherePrimitive(Primitive3D):
 		extent = V(r, r, r) * 2
 
 		Primitive3D.__init__(s, extent)
+
+	def __str__(s):
+		return f"sphere({s.extent})"
 
 
 class CylinderPrimitive(Primitive3D):
@@ -85,6 +94,12 @@ class CylinderPrimitive(Primitive3D):
 
 		Primitive3D.__init__(s, extent)
 
+	def __str__(s):
+		if s.roundingLevel > 0:
+			return f"cylinder({s.extent} {s.roundingLevel} {s.roundingRadius})"
+		else:
+			return f"cylinder({s.extent})"
+
 
 class RectPrimitive(Primitive2D):
 	def __init__(s, x=None, y=None, roundingLevel=0, r=None):
@@ -92,6 +107,12 @@ class RectPrimitive(Primitive2D):
 
 		processRoundingData(s, roundingLevel, r, 1)
 		Primitive2D.__init__(s, extent)
+
+	def __str__(s):
+		if s.roundingLevel > 0:
+			return f"rect({s.extent} {s.roundingLevel} {s.roundingRadius})"
+		else:
+			return f"rect({s.extent})"
 
 
 class CirclePrimitive(Primitive2D):
@@ -113,6 +134,12 @@ class CirclePrimitive(Primitive2D):
 		                    roundingSegments)
 
 		Primitive2D.__init__(s, extent)
+
+	def __str__(s):
+		if s.roundingLevel > 0:
+			return f"circle({s.extent} {s.roundingLevel} {s.roundingRadius})"
+		else:
+			return f"circle({s.extent})"
 
 
 class polygon(Primitive2D):

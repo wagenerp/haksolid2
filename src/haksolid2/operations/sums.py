@@ -18,6 +18,8 @@ class offset(SumOperation):
 		s.offset = offset
 		s.round = round
 
+	def __str__(s):
+		return f"offset({s.offset} {'round' if s.round else ''})"
 
 class Hull(SumOperation):
 	pass

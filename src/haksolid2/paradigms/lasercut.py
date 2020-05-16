@@ -10,18 +10,21 @@ class LasercutProcess(processing.ProcessBase):
 		s.thickness = thickness
 
 	def __str__(s):
-		return f"Lasercut({s.thickness}"
+		return f"Lasercut({s.thickness})"
 
 
 class LasercutLayer(metadata.SubprocessLayer):
-	TraceContour = 0
-	FillZigZag = 1
+	TraceContour = "trace.contour"
+	FillZigZag = "fill.zigZag"
 
 	def __init__(s, depth, mode=TraceContour, speedFactor=0.5):
 		metadata.SubprocessLayer.__init__(s)
 		s.depth = depth
 		s.mode = mode
 		s.speedFactor = speedFactor
+
+	def __str__(s):
+		return f"LasercutLaser({s.mode} {s.depth} {s.speedFactor*100}%)"
 
 
 @dag.DAGModule

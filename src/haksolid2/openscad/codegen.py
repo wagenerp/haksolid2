@@ -223,7 +223,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			s.addNode(f"color({scad_repr(color)})")
 
 		elif isinstance(node, metadata.DAGLayer):
-			if s.layerFilter is None or not s.layerFilter(node): return False
+			if (len(s.transformStack) > 1 and
+			    (s.layerFilter is None or not s.layerFilter(node))):
+				return False
 			color = list(node.color) + [node.alpha]
 			s.addNode(f"color({scad_repr(color)})")
 

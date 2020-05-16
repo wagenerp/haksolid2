@@ -3,6 +3,7 @@ from .. import processing
 from .. import errors
 from .. import metadata
 from . import codegen
+from ..math import *
 import warnings
 
 import os
@@ -77,11 +78,20 @@ class OpenSCADSource(processing.ProcessBase):
 
 
 class OpenSCADBuild(processing.ProcessBase):
-	def __init__(s, layerFilter=None, processPreview=False, *args, **kwargs):
+	def __init__(s,
+	             layerFilter=None,
+	             processPreview=False,
+	             outputFile=True,
+	             outputRaw=False,
+	             outputGeometry=False,
+	             *args,
+	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
-		s.useClangFormat = False
+		s.outputFile = outputFile
+		s.outputRaw = outputRaw
+		s.outputGeometry = outputGeometry
 
 	def __call__(s, ent: processing.EntityRecord):
 
@@ -98,7 +108,10 @@ class OpenSCADBuild(processing.ProcessBase):
 		else:
 			extension = ".svg"
 
-		fn_out = os.path.join(s.getOutputDirectory(True), ent.name + extension)
+		if s.outputFile:
+			fn_out = os.path.join(s.getOutputDirectory(True), ent.name + extension)
+		else:
+			fn_out = "out" + extension
 
 		fn_tmp = tempfile.mkdtemp()
 		cwd = os.getcwd()
@@ -115,10 +128,26 @@ class OpenSCADBuild(processing.ProcessBase):
 			if p.returncode != 0:
 				raise RuntimeError("error compiling OpenSCAD code: \n" + serr.decode())
 
+			if s.outputFile:
+				res.files.append(fn_out)
+
+			if s.outputRaw or s.outputGeometry:
+				with open(fn_out, "rb") as f:
+					raw_data = f.read()
+					if s.outputRaw:
+						res.data[fn_out] = raw_data
+
 		finally:
 			os.chdir(cwd)
 			shutil.rmtree(fn_tmp)
 
-		res.files.append(fn_out)
+		if s.outputGeometry:
+			soup = FaceSoup()
+			res.data["geometry"] = soup
+
+			if extension == ".stl":
+				soup.load_stl(raw_data.decode())
+			else:
+				soup.load_svg_loops(raw_data.decode())
 
 		return res

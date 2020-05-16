@@ -18,6 +18,8 @@ class previewLayer(DAGLayer):
 class nonpreviewLayer(DAGLayer):
 	pass
 
+class SubprocessLayer(DAGLayer):
+	pass
 
 class LayerFilter:
 	def __call__(s, layer: DAGLayer):

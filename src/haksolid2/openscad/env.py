@@ -10,6 +10,7 @@ from ..processing.cli import climain
 from ..dag import DAGModule
 from ..prefabs import *
 from ..paradigms import *
+from ..exporters import *
 
 part.SetDefaultProcess(OpenSCADBuild())
 arrangement.SetDefaultProcess(

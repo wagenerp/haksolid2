@@ -2,6 +2,9 @@ from .. import dag
 from .. import metadata
 from .. import operations
 from .. import processing
+from collections import namedtuple
+
+laser_params_t = namedtuple("laser_params_t", "feedrate pwm current")
 
 
 class LasercutProcess(processing.ProcessBase):
@@ -36,3 +39,37 @@ def engrave(depth, speedFactor=0.5):
 def trace(depth, speedFactor=0.5):
 	~LasercutLayer(depth, LasercutLayer.TraceContour,
 	               speedFactor) * dag.DAGAnchor()
+
+
+class LaserMaterial:
+	def computeParams(s, p: LasercutLayer) -> laser_params_t:
+		raise NotImplementedError()
+
+
+class ConstantLaserMaterial(LaserMaterial):
+	def __init__(s, params: laser_params_t):
+		LaserMaterial.__init__(s)
+		s._params = params
+
+	def computeParams(s, p: LasercutLayer) -> laser_params_t:
+		return s._params
+
+
+class ConstantPowerLaserMaterial(LaserMaterial):
+	def __init__(s, depthMin, depthMax, feedrateFunc, current, pwm=1):
+		LaserMaterial.__init__(s)
+		s.depthMin = depthMin
+		s.depthMax = depthMax
+		s.feedrateFunc = feedrateFunc
+		s.current = current
+		s.pwm = pwm
+
+	def computeParams(s, p: LasercutLayer) -> laser_params_t:
+
+		if p.depth > s.depthMax:
+			raise RuntimeError(
+			  f"unachievable laser depth: {p.depth} > depthMax = {s.depthMax}")
+		if p.depth < s.depthMin:
+			raise RuntimeError(
+			  f"unachievable laser depth: {p.depth} < depthMin = {s.depthMin}")
+		return laser_params_t(s.feedrateFunc(p.depth), s.pwm, s.current)

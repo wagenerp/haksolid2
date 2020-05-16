@@ -112,7 +112,7 @@ class EntityType:
 						func(*args, **kwargs)
 					return root.makeModule()
 
-				rec = EntityRecord(cls, wrapper, nameOrFunc, description, process)
+				rec = EntityRecord(cls, wrapper, name, description, process)
 				registerEntity(rec)
 
 				return wrapper

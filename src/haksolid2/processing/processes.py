@@ -7,17 +7,21 @@ fn_main_dir = os.path.dirname(os.path.realpath(main.__file__))
 class ProcessResults:
 	def __init__(s):
 		s.files = list()
+		s.data = dict()
+
 
 class ProcessResultViewer:
 	def wait(s):
 		pass
 
+
 class SubprocessResultViewer(ProcessResultViewer):
-	def __init__(s,proc):
-		s.proc=proc
-	
+	def __init__(s, proc):
+		s.proc = proc
+
 	def wait(s):
 		s.proc.wait()
+
 
 class ProcessBase:
 	DefaultDirectory = None
@@ -40,10 +44,8 @@ class ProcessBase:
 
 		return res
 
-	
-	def __call__(s,ent):
+	def __call__(s, ent):
 		raise NotImplementedError()
 
-	def watch(s,res : ProcessResults) -> ProcessResultViewer:
+	def watch(s, res: ProcessResults) -> ProcessResultViewer:
 		pass
-

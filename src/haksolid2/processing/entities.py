@@ -11,7 +11,7 @@ class EntityRecord:
 		if process is None:
 			process = cls.DefaultProcess
 
-		if not isinstance(process,processes.ProcessBase):
+		if not isinstance(process, processes.ProcessBase):
 			raise TypeError(f"not a process: {process}")
 
 		s._subject = subject
@@ -86,19 +86,28 @@ class EntityType:
 	DefaultProcess = None
 
 	def __new__(cls, name: str, description=None, process=None):
-		node = EntityNode()
+		if process is None:
+			process = cls.DefaultProcess
+		node = EntityNode(process)
 		rec = EntityRecord(cls, node, name, description, process)
 		registerEntity(rec)
 		return node
 
 	@classmethod
-	def module(cls, nameOrFunc, description=None, process=None):
+	def module(cls, nameOrFunc=None, description=None, process=None):
 
-		if isinstance(nameOrFunc, str):
+		if process is None:
+			process = cls.DefaultProcess
+
+		if isinstance(nameOrFunc, str) or nameOrFunc is None:
 
 			def metawrapper(func):
+				name = nameOrFunc
+				if name is None:
+					name = func.__name__
+
 				def wrapper(*args, **kwargs):
-					root = dag.DAGGroup() * dag.DAGGroup()
+					root = EntityNode(process) * dag.DAGGroup()
 					with root:
 						func(*args, **kwargs)
 					return root.makeModule()
@@ -106,11 +115,13 @@ class EntityType:
 				rec = EntityRecord(cls, wrapper, nameOrFunc, description, process)
 				registerEntity(rec)
 
+				return wrapper
+
 			return metawrapper
 		else:
 
 			def wrapper(*args, **kwargs):
-				root = dag.DAGGroup() * dag.DAGGroup()
+				root = EntityNode(process) * dag.DAGGroup()
 				with root:
 					nameOrFunc(*args, **kwargs)
 				return root.makeModule()
@@ -136,5 +147,9 @@ class arrangement(EntityType):
 
 
 class EntityNode(dag.DAGGroup):
-	def __init__(s):
+	def __init__(s, process: processes.ProcessBase):
+		s.process = process
 		dag.DAGGroup.__init__(s)
+
+	def __str__(s):
+		return f"{s.__class__.__name__}({s.process})"

@@ -1,5 +1,5 @@
 from .. import dag, errors
-from .. import transform, primitives, operations, metadata
+from .. import transform, primitives, operations, metadata, processing, paradigms, usability
 from ..math import *
 import warnings
 import numbers
@@ -34,26 +34,27 @@ def scad_repr(data):
 		raise Exception("unexpected data type: %s" % type(data))
 
 
-class OpenSCADcodeGen(dag.DAGVisitor):
-	def __init__(s, layerFilter: metadata.LayerFilter = None):
+class OpenSCADcodeGen(usability.TransformVisitor):
+	def __init__(s,
+	             layerFilter: metadata.LayerFilter = None,
+	             processPreview=False):
+		usability.TransformVisitor.__init__(s)
 		s.code = ""
-		s.transformStack = list()
-		s.transformStack.append(M())
-		s.absTransform = M()
 		s.layerFilter = layerFilter
+		s.processPreview = processPreview
 
 	def addNode(s, code):
 		s.code += code
 
 	def addLeaf(s, code):
 		s.code += f"multmatrix({scad_repr(s.transformStack[-1])}) {code}"
+		s.absTransform = M()
 
 	def __call__(s, node):
+		usability.TransformVisitor.__call__(s, node)
 		if isinstance(node, transform.AffineTransform):
-			s.absTransform = s.transformStack[-1] @ node.matrix
 			s.addNode("union()")
 		elif isinstance(node, transform.untransform):
-			s.absTransform = M()
 			s.addNode("union()")
 
 		elif isinstance(node, primitives.CuboidPrimitive):
@@ -168,7 +169,7 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 							circle(r={node.roundingRadius},$fn={node.roundingSegments});"""
 				code += "}"
 				s.addLeaf(code)
-		
+
 		elif isinstance(node, primitives.polygon):
 			s.addLeaf(f"polygon(points={scad_repr(node.points)})")
 
@@ -188,38 +189,33 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 
 		elif isinstance(node, operations.LinearExtrude):
 			s.addLeaf(f"linear_extrude(height={scad_repr(node.amount)},center=true)")
-			s.absTransform=M()
 		elif isinstance(node, operations.rotate_extrude):
 			s.addLeaf(f"rotate_extrude()")
-			s.absTransform=M()
 		elif isinstance(node, operations.MatrixExtrusionNode):
 			s.addLeaf(f"union()")
-			s.code+="{"
-			s.absTransform=M()
+			s.code += "{"
 
-			children_code="union() {"
+			children_code = "union() {"
 			for child in node.children:
-				sub=OpenSCADcodeGen(layerFilter=s.layerFilter)
+				sub = OpenSCADcodeGen(layerFilter=s.layerFilter)
 				child.visitDescendants(sub)
-				children_code+=sub.code
-				
+				children_code += sub.code
 
-			children_code+="}"
+			children_code += "}"
 
-
-			T0=None
+			T0 = None
 			for T1 in node.matrices():
 				if T0 is not None:
-					s.code+=f"""
+					s.code += f"""
 						hull() {{ 
 							multmatrix({scad_repr(T0)}) 
 								linear_extrude(height=1e-99,center=true) {children_code};
 							multmatrix({scad_repr(T1)}) 
 								linear_extrude(height=1e-99,center=true) {children_code};
 						}}"""
-					
-				T0=T1
-			s.code +="}"
+
+				T0 = T1
+			s.code += "}"
 			return False
 
 		elif isinstance(node, metadata.color):
@@ -231,6 +227,51 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			color = list(node.color) + [node.alpha]
 			s.addNode(f"color({scad_repr(color)})")
 
+		elif s.processPreview and isinstance(node, processing.EntityNode):
+			if isinstance(node.process, paradigms.lasercut.LasercutProcess):
+				layers = usability.LayersVisitor(shallow=True)
+				node.visitDescendants(layers)
+
+				holes = ""
+
+				for T, child in layers.layers:
+					if not isinstance(child, paradigms.lasercut.LasercutLayer): continue
+					sub = OpenSCADcodeGen(layerFilter=metadata.ClassLayerFilter(
+					  paradigms.lasercut.LasercutLayer))
+					child.visitDescendants(sub)
+					layer_code = None
+					if child.mode == paradigms.lasercut.LasercutLayer.TraceContour:
+						layer_code = f"""
+							difference() {{ 
+								offset(delta=0.25) {{ {sub.code}}} 
+								offset(delta=-0.25) {{ {sub.code}}} }}"""
+
+						pass
+					elif child.mode == paradigms.lasercut.LasercutLayer.FillZigZag:
+						layer_code = sub.code
+					if layer_code is not None:
+						depth = child.depth
+						if depth == node.process.thickness: depth += 1e-1
+						layer_code = f"""
+							color([1,0.2,1,0.5])
+							multmatrix({scad_repr(s.absTransform @ T)})
+								translate([0,0,{scad_repr(-depth)}])
+									linear_extrude(height={scad_repr(depth+1e-1)}) {{{layer_code}}}"""
+						holes += layer_code
+
+				sub = OpenSCADcodeGen(layerFilter=s.layerFilter)
+				node.visitDescendants(sub)
+
+				s.code += f""" multmatrix({scad_repr(s.absTransform)})  {{
+					difference() {{
+						translate([0,0,{scad_repr(-node.process.thickness)}]) 
+							linear_extrude(height={scad_repr(node.process.thickness)}) {{ 
+								{sub.code} }} 
+						color([1,1,1,1]) union() {{ {holes} }} }}
+						{holes} }}"""
+				return False
+			else:
+				s.addNode("union()")
 		elif isinstance(node, dag.DAGGroup):
 			s.addNode("union()")
 		else:
@@ -239,10 +280,9 @@ class OpenSCADcodeGen(dag.DAGVisitor):
 			return False
 
 	def descent(s):
-		s.transformStack.append(M(s.absTransform))
+		usability.TransformVisitor.descent(s)
 		s.code += "{"
 
 	def ascend(s):
-		s.transformStack.pop()
-		s.absTransform = s.transformStack[-1]
+		usability.TransformVisitor.ascend(s)
 		s.code += "};"

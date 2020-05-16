@@ -9,8 +9,10 @@ from ..math import *
 from ..processing.cli import climain
 from ..dag import DAGModule
 from ..prefabs import *
+from ..paradigms import *
 
 part.SetDefaultProcess(OpenSCADBuild())
 arrangement.SetDefaultProcess(
   OpenSCADSource(useClangFormat=True,
-                 layerFilter=ClassLayerFilter(previewLayer)))
+                 layerFilter=ClassLayerFilter(previewLayer),
+                 processPreview=True))

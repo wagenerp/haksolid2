@@ -13,16 +13,23 @@ import shutil
 
 
 class OpenSCADSource(processing.ProcessBase):
-	def __init__(s, useClangFormat=False, layerFilter=None, *args, **kwargs):
+	def __init__(s,
+	             useClangFormat=False,
+	             layerFilter=None,
+	             processPreview=False,
+	             *args,
+	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
 		s.layerFilter = layerFilter
+		s.processPreview = processPreview
 		s.useClangFormat = useClangFormat
 
 	def __call__(s, ent: processing.EntityRecord):
 
 		res = processing.ProcessResults()
 
-		visitor = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter)
+		visitor = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter,
+		                                  processPreview=s.processPreview)
 		ent.node.visitDescendants(visitor)
 
 		fn_scad = os.path.join(s.getOutputDirectory(True), ent.name + ".scad")
@@ -70,16 +77,18 @@ class OpenSCADSource(processing.ProcessBase):
 
 
 class OpenSCADBuild(processing.ProcessBase):
-	def __init__(s, layerFilter=None, *args, **kwargs):
+	def __init__(s, layerFilter=None, processPreview=False, *args, **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
 		s.layerFilter = layerFilter
+		s.processPreview = processPreview
 		s.useClangFormat = False
 
 	def __call__(s, ent: processing.EntityRecord):
 
 		res = processing.ProcessResults()
 
-		vcodegen = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter)
+		vcodegen = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter,
+		                                   processPreview=s.processPreview)
 		ent.node.visitDescendants(vcodegen)
 
 		vdim = metadata.DimensionVisitor()

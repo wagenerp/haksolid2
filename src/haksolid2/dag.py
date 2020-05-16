@@ -286,6 +286,11 @@ class DAGNode(DAGBase):
 		for parent in s.parents:
 			parent.children.remove(s)
 		s.parents.clear()
+
+	def dropChildren(s):
+		for child in s.children:
+			child.parents.remove(s)
+		s.children.clear()
 	
 	def emplace(s,node):
 		node.unlink()

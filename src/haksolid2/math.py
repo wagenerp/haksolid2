@@ -1,6 +1,6 @@
 import re
 import numpy
-from collections import Iterable
+from collections import Iterable, namedtuple
 from math import cos, sin, pi
 
 
@@ -303,3 +303,69 @@ class M(numpy.ndarray):
 		if p is not None:
 			res = M.Translation(p) @ M
 		return res
+
+
+face_t = namedtuple("face_t", "normal vertices")
+
+
+class FaceSoup:
+	def __init__(s):
+		s.faces = list()
+
+	def load_stl(s, code):
+
+		INIT = 0
+		BODY = 1
+		FACET = 2
+		LOOP = 3
+		state = INIT
+		vertices = list()
+		normal = None
+		for ln in code.splitlines():
+			data = shlex.split(ln)
+			if len(data) < 1: continue
+			if state == INIT:
+				if data[0] == "solid":
+					state = BODY
+				else:
+					raise SyntaxError("solid expected")
+			elif state == BODY:
+				if data[0] == "facet":
+					state = FACET
+					normal = V(float(v) for v in data[2:5])
+				elif data[0] == "endsolid":
+					state = INIT
+				else:
+					raise SyntaxError("facet or endsolid expected")
+			elif state == FACET:
+				if ln.strip() == "outer loop":
+					state = LOOP
+					vertices = list()
+				elif data[0] == "endfacet":
+					state = BODY
+				else:
+					raise SyntaxError("loop or endfacet expected")
+			elif state == LOOP:
+				if data[0] == "endloop":
+					state = FACET
+					s.faces.append(face_t(normal, vertices))
+				elif data[0] == "vertex":
+					vertices.append(V(float(v) for v in data[1:4]))
+				else:
+					raise SyntaxError("vertex or endloop expected")
+
+	def load_svg_loops(s, code):
+		for stmt in re.findall("<path d=\"(.*?)\".*?/>", code, re.DOTALL):
+			vertices = list()
+			p = V(0, 0)
+			for movop, x, y, endop in re.findall(
+			  "([ML])[ \\t]+([0-9.-]+),([0-9.-]+)|(z)", stmt):
+				if endop == "z":
+					s.faces.append(face_t(V(0, 0, 1), vertices))
+					vertices = list()
+				elif movop == "M":
+					p = V(float(x), -float(y))
+				elif movop == "L":
+					if len(vertices) < 1: vertices.append(p)
+					p = V(float(x), -float(y))
+					vertices.append(p)

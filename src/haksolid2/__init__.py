@@ -8,3 +8,4 @@ from . import metadata
 from . import errors
 from . import processing
 from . import openscad
+from . import paradigms

@@ -19,6 +19,10 @@ class DimensionVisitor(dag.DAGVisitor):
 			s.has2dTo3d = True
 			s.has3d = True
 			return False
+		elif isinstance(node, operations.ProjectionNode):
+			s.has3dTo2d = True
+			s.has2d = True
+			return False
 
 	@property
 	def empty(s):

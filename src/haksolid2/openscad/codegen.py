@@ -258,7 +258,12 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				T0 = T1
 			s.code += "}"
 			return False
-
+		
+		elif isinstance(node, operations.slicePlane):
+			s.addLeaf("projection(cut=true)")
+		elif isinstance(node, operations.projection):
+			s.addLeaf("projection(cut=false)")
+			
 		elif isinstance(node, metadata.color):
 			color = list(node.getColor()) + [node.alpha]
 			s.addNode(f"color({scad_repr(color)})")

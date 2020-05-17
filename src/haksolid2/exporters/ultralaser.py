@@ -70,11 +70,12 @@ class Ultralaser(lasercut.LasercutProcess):
 		# build a list of tuples (transform, root, soup) of lasercutting subjobs
 		jobs = list()
 
+		subproc = openscad.OpenSCADBuild(outputFile=False, outputGeometry=True)
+
 		if True: # add all sub-layers to the mix
 			layers = usability.LayersVisitor(shallow=False)
 			ent.node.visitDescendants(layers)
 
-			subproc = openscad.OpenSCADBuild(outputFile=False, outputGeometry=True)
 			for T, layer in layers.layers:
 				if layer == ent.node: continue
 				if not isinstance(layer, paradigms.lasercut.LasercutLayer): continue
@@ -147,3 +148,5 @@ class Ultralaser(lasercut.LasercutProcess):
 
 		res = processing.ProcessResults()
 		res.files.append(fn_out)
+
+		return res

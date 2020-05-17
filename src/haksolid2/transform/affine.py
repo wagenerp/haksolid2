@@ -31,7 +31,7 @@ def _rotate(a=0, b=None, c=None):
 	if isinstance(a, Iterable):
 		return AffineTransform(M.Rotation(a))
 	elif b is None and c is None:
-		return AffineTransform(M.Rotation((0,0,a)))
+		return AffineTransform(M.Rotation((0, 0, a)))
 	else:
 		return AffineTransform(M.Rotation((a, b or 0, c or 0)))
 
@@ -57,6 +57,15 @@ class untransform(dag.DAGNode):
 
 	def __str__(s):
 		return "untransform"
+
+
+class retransform(dag.DAGLeaf):
+	def __init__(s, subject: dag.DAGBase):
+		dag.DAGLeaf.__init__(s)
+		s.subject = subject
+
+	def __str__(s):
+		return "retransform"
 
 
 translate = usability.OptionalConditionalNode(_translate, dag.DAGNode)

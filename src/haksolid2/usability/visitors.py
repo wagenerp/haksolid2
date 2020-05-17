@@ -53,3 +53,31 @@ class LayersVisitor(TransformVisitor):
 		if isinstance(node, metadata.DAGLayer):
 			s.layers.append((M(s.absTransform), node))
 			if s.shallow: return False
+
+
+class AllAbsTransformsVisitor(dag.DAGVisitor):
+	def __init__(s):
+		s.absTransforms = list()
+		s.transformStack = list()
+		s.transformStack.append(M())
+		s.absTransform = M()
+		s.isRoot = False
+
+	def __call__(s, node):
+		s.isRoot = False
+		if isinstance(node, transform.AffineTransform):
+			s.absTransform = node.matrix @ s.transformStack[-1]
+		elif isinstance(node, transform.untransform):
+			s.absTransforms.append(s.absTransform)
+			return False
+
+	def descent(s):
+		s.transformStack.append(M(s.absTransform))
+		s.isRoot = True
+
+	def ascend(s):
+		if s.isRoot:
+			s.absTransforms.append(s.absTransform)
+		s.transformStack.pop()
+		s.absTransform = s.transformStack[-1]
+		s.isRoot = False

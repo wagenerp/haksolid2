@@ -45,6 +45,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		s.processPreview = processPreview
 		s.useSegmentCount = useSegmentCount
 
+	def clone(s):
+		return OpenSCADcodeGen(s.layerFilter, s.processPreview, s.useSegmentCount)
+
 	def addNode(s, code):
 		s.code += code
 
@@ -69,6 +72,15 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			s.addNode("union()")
 		elif isinstance(node, transform.untransform):
 			s.addNode("union()")
+		elif isinstance(node, transform.retransform):
+			allabs = usability.AllAbsTransformsVisitor()
+			node.subject.visitAncestors(allabs)
+			sub = s.clone()
+			node.subject.visitDescendants(sub)
+			s.code += "{"
+			for T in allabs.absTransforms:
+				s.code += f"multmatrix({scad_repr(T)}) {{ {sub.code} }}"
+			s.code += "}"
 
 		elif isinstance(node, primitives.CuboidPrimitive):
 			if node.roundingLevel == 0:

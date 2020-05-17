@@ -41,7 +41,7 @@ class NoLayerFilter(LayerFilter):
 
 class ClassLayerFilter(LayerFilter):
 	def __init__(s, *classes):
-		s.classes = set(classes)
+		s.classes = tuple(classes)
 
 	def __call__(s, layer: DAGLayer):
-		return layer.__class__ in s.classes
+		return isinstance(layer,s.classes)

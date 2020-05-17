@@ -191,6 +191,17 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		elif isinstance(node, primitives.polygon):
 			s.addLeaf(f"polygon(points={scad_repr(node.points)})")
 
+		elif isinstance(node, primitives.text):
+			code = f"text({scad_repr(node.text)}"
+			for k in ("size", "font", "halign", "valign", "spacing", "direction"):
+				v = getattr(node, k)
+				if v is not None:
+					code += f",{k}={scad_repr(v)}"
+			if node.segments is not None:
+				code += f",$fn={scad_repr(node.segments)}"
+			code += ")"
+			s.addLeaf(code)
+
 		elif isinstance(node, operations.difference):
 			s.addNode(f"difference()")
 		elif isinstance(node, operations.intersection):

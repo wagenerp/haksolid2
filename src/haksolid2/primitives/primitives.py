@@ -252,3 +252,24 @@ sphere = usability.BoxAnchorPattern(PrimitiveFactory(SpherePrimitive))
 cylinder = RoundedBoxAnchorExplicitPattern(PrimitiveFactory(CylinderPrimitive))
 rect = RoundedBoxAnchorPattern(PrimitiveFactory(RectPrimitive))
 circle = RoundedBoxAnchorExplicitPattern(PrimitiveFactory(CirclePrimitive))
+
+
+class text(Primitive2D):
+	def __init__(s,
+	             text,
+	             size=10,
+	             font=None,
+	             halign="left",
+	             valign="baseline",
+	             spacing=1,
+	             direction="ltr",
+	             segments=None):
+		Primitive2D.__init__(s, None)
+		s.text = text
+		s.size = size
+		s.font = font
+		s.halign = halign
+		s.valign = valign
+		s.spacing = spacing
+		s.direction = direction
+		s.segments = segments

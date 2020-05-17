@@ -77,6 +77,10 @@ class CylinderPrimitive(Primitive3D):
 	             r=None,
 	             h=None,
 	             d=None,
+	             r0=None,
+	             d0=None,
+	             r1=None,
+	             d1=None,
 	             segments=32,
 	             explicit=False,
 	             roundingLevel=0,
@@ -86,8 +90,12 @@ class CylinderPrimitive(Primitive3D):
 		s.explicit = explicit
 
 		if h is None: raise ValueError("missing height")
-		r = usability.getFlexibleRadius(r, d)
+		r0, r1 = usability.getFlexibleDualRadius(r, d, r0, d0, r1, d1)
+
+		r = max(r0, r1)
 		extent = V(r * 2, r * 2, h)
+		s.r0 = r0
+		s.r1 = r1
 
 		processRoundingData(s, roundingLevel, r2, 2 if explicit else 1,
 		                    roundingSegments)

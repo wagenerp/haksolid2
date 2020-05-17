@@ -118,26 +118,27 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			if node.roundingLevel == 0:
 				s.addLeaf(f"""
 				  cylinder(
-						d={scad_repr(node.extent.x)},
+						r1={scad_repr(node.r0)},
+						r2={scad_repr(node.r1)},
 						h={scad_repr(node.extent.z)}
 						{s.segmentCode(node)}
 						,center=true)""")
 			elif node.roundingLevel == 1:
-				x1 = node.extent.x * 0.5 - node.roundingRadius
+				r0, r1, R, h = node.r0, node.r1, node.roundingRadius, node.extent.z
 				code = f"""
 				  rotate_extrude({s.segmentCode(node,first=True)}) 
-						translate([0,{scad_repr(-node.extent.z*0.5)}]) 
+						translate([0,{scad_repr(-h*0.5)}]) 
 							hull() {{
-								square([0.01,{scad_repr(node.extent.z)}]);
-								translate([{scad_repr(x1)},{scad_repr(node.roundingRadius)}])
+								square([0.01,{scad_repr(h)}]);
+								translate([{scad_repr(r0-R + (r1-r0)/h*R)},{scad_repr(R)}])
 									circle(
-										r={scad_repr(node.roundingRadius)}
+										r={scad_repr(R)}
 										{s.segmentCode(node,node.roundingSegments)});
 								translate([
-									{scad_repr(x1)},
-									{scad_repr(node.extent.z-node.roundingRadius)}]) 
+									{scad_repr(r1-R + (r0-r1)/h*R)},
+									{scad_repr(h-R)}]) 
 									circle(
-										r={scad_repr(node.roundingRadius)}
+										r={scad_repr(R)}
 										{s.segmentCode(node,node.roundingSegments)});
 							}}
 					"""

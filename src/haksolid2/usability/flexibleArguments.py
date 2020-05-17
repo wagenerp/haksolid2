@@ -48,15 +48,41 @@ def getFlexibleExtent2(x, y):
 	return extent
 
 
-def getFlexibleRadius(r, d):
+def getFlexibleRadiusOrNone(r, d):
 
-	if r is None and d is None: raise ValueError("missing radius / diameter")
+	if r is None and d is None: return None
 	if r is not None and d is not None: raise ValueError("ambiguous radius")
 
 	if r is None:
 		return d * 0.5
 	else:
 		return r
+
+
+def getFlexibleRadius(r, d):
+
+	if r is None and d is None: raise ValueError("missing radius / diameter")
+	return getFlexibleRadiusOrNone(r, d)
+
+
+def getFlexibleDualRadius(r, d, r0, d0, r1, d1):
+
+	r = getFlexibleRadiusOrNone(r, d)
+	r0 = getFlexibleRadiusOrNone(r0, d0)
+	r1 = getFlexibleRadiusOrNone(r1, d1)
+
+	if r is not None:
+		if r0 is not None and r1 is not None:
+			raise ValueError("ambiguous radius pair")
+		return r, r
+	elif r0 is None and r1 is None:
+		raise ValueError("missing radius / diameter")
+	elif r0 is None:
+		return r1, r1
+	elif r1 is None:
+		return r0, r0
+	else:
+		return r0, r1
 
 
 def getFlexibleMatrix(p=None, n=None, u=None, v=None, m=None, rectify=True):

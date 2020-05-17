@@ -37,11 +37,13 @@ def scad_repr(data):
 class OpenSCADcodeGen(usability.TransformVisitor):
 	def __init__(s,
 	             layerFilter: metadata.LayerFilter = None,
-	             processPreview=False):
+	             processPreview=False,
+	             useSegmentCount=True):
 		usability.TransformVisitor.__init__(s)
 		s.code = ""
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
+		s.useSegmentCount = useSegmentCount
 
 	def addNode(s, code):
 		s.code += code
@@ -49,6 +51,17 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 	def addLeaf(s, code):
 		s.code += f"multmatrix({scad_repr(s.transformStack[-1])}) {code}"
 		s.absTransform = M()
+
+	def segmentCode(s, node, n=None, first=False):
+		if n is None:
+			n = node.segments
+		if (hasattr(node, "explicit") and
+		    getattr(node, "explicit")) or s.useSegmentCount:
+			if first:
+				return f"$fn={scad_repr(n)}"
+			else:
+				return f",$fn={scad_repr(n)}"
+		return ""
 
 	def __call__(s, node):
 		usability.TransformVisitor.__call__(s, node)
@@ -69,9 +82,11 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				dy = node.extent.y * 0.5 - node.roundingRadius
 				for x in (-1, 1):
 					for y in (-1, 1):
-						code += (
-						  f"translate([{scad_repr(x*dx)},{scad_repr(y*dy)}]) circle(r={scad_repr(node.roundingRadius)},$fn={scad_repr(node.roundingSegments)});"
-						)
+						code += f"""
+						  translate([{scad_repr(x*dx)},{scad_repr(y*dy)}]) 
+								circle(
+									r={scad_repr(node.roundingRadius)}
+									{s.segmentCode(node,node.roundingSegments)});"""
 
 				code += "}"
 				s.addLeaf(code)
@@ -89,8 +104,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 							  translate([
 									{scad_repr(x*dx)},{scad_repr(y*dy)},{scad_repr(z*dz)}]) 
 									sphere(
-										r={scad_repr(node.roundingRadius)},
-										$fn={scad_repr(node.roundingSegments)});
+										r={scad_repr(node.roundingRadius)}
+										{s.segmentCode(node,node.roundingSegments)});
 								"""
 
 				code += "}"
@@ -98,30 +113,32 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				pass
 
 		elif isinstance(node, primitives.SpherePrimitive):
-			s.addLeaf(
-			  f"sphere({scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})")
+			s.addLeaf(f"sphere(d={scad_repr(node.extent.x)}{s.segmentCode(node)})")
 		elif isinstance(node, primitives.CylinderPrimitive):
 			if node.roundingLevel == 0:
-				s.addLeaf(
-				  f"cylinder(d={scad_repr(node.extent.x)},h={scad_repr(node.extent.z)},$fn={scad_repr(node.segments)},center=true)"
-				)
+				s.addLeaf(f"""
+				  cylinder(
+						d={scad_repr(node.extent.x)},
+						h={scad_repr(node.extent.z)}
+						{s.segmentCode(node)}
+						,center=true)""")
 			elif node.roundingLevel == 1:
 				x1 = node.extent.x * 0.5 - node.roundingRadius
 				code = f"""
-				  rotate_extrude($fn={scad_repr(node.segments)}) 
+				  rotate_extrude({s.segmentCode(node,first=True)}) 
 						translate([0,{scad_repr(-node.extent.z*0.5)}]) 
 							hull() {{
 								square([0.01,{scad_repr(node.extent.z)}]);
 								translate([{scad_repr(x1)},{scad_repr(node.roundingRadius)}])
 									circle(
-										r={scad_repr(node.roundingRadius)},
-										$fn={scad_repr(node.roundingSegments)});
+										r={scad_repr(node.roundingRadius)}
+										{s.segmentCode(node,node.roundingSegments)});
 								translate([
 									{scad_repr(x1)},
 									{scad_repr(node.extent.z-node.roundingRadius)}]) 
 									circle(
-										r={scad_repr(node.roundingRadius)},
-										$fn={scad_repr(node.roundingSegments)});
+										r={scad_repr(node.roundingRadius)}
+										{s.segmentCode(node,node.roundingSegments)});
 							}}
 					"""
 				s.addLeaf(code)
@@ -134,7 +151,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 					for i in range(node.segments):
 						code += f"""
 							translate({scad_repr(V.Cylinder(i*ida,r,z))}) 
-								sphere(r={node.roundingRadius},$fn={node.roundingSegments});"""
+								sphere(r={node.roundingRadius}{s.segmentCode(node,node.roundingSegments)});"""
 				code += "}"
 				s.addLeaf(code)
 		elif isinstance(node, primitives.RectPrimitive):
@@ -148,7 +165,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				for x in (-1, 1):
 					for y in (-1, 1):
 						code += (
-						  f"translate([{scad_repr(x*dx)},{scad_repr(y*dy)}]) circle(r={scad_repr(node.roundingRadius)},$fn={scad_repr(node.roundingSegments)});"
+						  f"translate([{scad_repr(x*dx)},{scad_repr(y*dy)}]) circle(r={scad_repr(node.roundingRadius)}{s.segmentCode(node,node.roundingSegments)});"
 						)
 
 				code += "}"
@@ -156,9 +173,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 
 		elif isinstance(node, primitives.CirclePrimitive):
 			if node.roundingLevel == 0:
-				s.addLeaf(
-				  f"circle(d={scad_repr(node.extent.x)},$fn={scad_repr(node.segments)})"
-				)
+				s.addLeaf(f"circle(d={scad_repr(node.extent.x)}{s.segmentCode(node)})")
 			elif node.roundingLevel == 1:
 				ida = 360 / node.segments
 				r = node.extent.x * 0.5 - node.roundingRadius / cos(pi / node.segments)
@@ -166,7 +181,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				for i in range(node.segments):
 					code += f"""
 						translate({scad_repr(V.Cylinder(i*ida,r))}) 
-							circle(r={node.roundingRadius},$fn={node.roundingSegments});"""
+							circle(
+								r={node.roundingRadius}
+								{s.segmentCode(node,node.roundingSegments)});"""
 				code += "}"
 				s.addLeaf(code)
 

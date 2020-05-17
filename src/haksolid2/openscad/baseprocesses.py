@@ -18,19 +18,22 @@ class OpenSCADSource(processing.ProcessBase):
 	             useClangFormat=False,
 	             layerFilter=None,
 	             processPreview=False,
+	             useSegmentCount=True,
 	             *args,
 	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
 		s.useClangFormat = useClangFormat
+		s.useSegmentCount = useSegmentCount
 
 	def __call__(s, ent: processing.EntityRecord):
 
 		res = processing.ProcessResults()
 
 		visitor = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter,
-		                                  processPreview=s.processPreview)
+		                                  processPreview=s.processPreview,
+		                                  useSegmentCount=s.useSegmentCount)
 		ent.node.visitDescendants(visitor)
 
 		fn_scad = os.path.join(s.getOutputDirectory(True), ent.name + ".scad")
@@ -84,6 +87,8 @@ class OpenSCADBuild(processing.ProcessBase):
 	             outputFile=True,
 	             outputRaw=False,
 	             outputGeometry=False,
+	             outputFormat=None,
+	             useSegmentCount=True,
 	             *args,
 	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
@@ -92,18 +97,23 @@ class OpenSCADBuild(processing.ProcessBase):
 		s.outputFile = outputFile
 		s.outputRaw = outputRaw
 		s.outputGeometry = outputGeometry
+		s.outputFormat = outputFormat
+		s.useSegmentCount = useSegmentCount
 
 	def __call__(s, ent: processing.EntityRecord):
 
 		res = processing.ProcessResults()
 
 		vcodegen = codegen.OpenSCADcodeGen(layerFilter=s.layerFilter,
-		                                   processPreview=s.processPreview)
+		                                   processPreview=s.processPreview,
+		                                   useSegmentCount=s.useSegmentCount)
 		ent.node.visitDescendants(vcodegen)
 
 		vdim = metadata.DimensionVisitor()
 		ent.node.visitDescendants(vdim)
-		if vdim.has3d or vdim.empty:
+		if s.outputFormat is not None:
+			extension = s.outputFormat
+		elif vdim.has3d or vdim.empty:
 			extension = ".stl"
 		else:
 			extension = ".svg"
@@ -135,7 +145,7 @@ class OpenSCADBuild(processing.ProcessBase):
 				with open(fn_out, "rb") as f:
 					raw_data = f.read()
 					if s.outputRaw:
-						res.data[fn_out] = raw_data
+						res.data["raw"] = raw_data
 
 		finally:
 			os.chdir(cwd)
@@ -147,7 +157,9 @@ class OpenSCADBuild(processing.ProcessBase):
 
 			if extension == ".stl":
 				soup.load_stl(raw_data.decode())
-			else:
+			elif extension == ".svg":
 				soup.load_svg_loops(raw_data.decode())
+			else:
+				raise RuntimeError(f"cannot load geometry from {extension} files")
 
 		return res

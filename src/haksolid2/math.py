@@ -2,6 +2,7 @@ import re
 import numpy
 from collections import Iterable, namedtuple
 from math import cos, sin, pi
+import shlex
 
 
 class V(numpy.ndarray):

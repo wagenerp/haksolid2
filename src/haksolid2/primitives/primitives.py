@@ -19,21 +19,21 @@ def processRoundingData(s, roundingLevel, r, maxRoundingLevel, segments=32):
 	s.roundingSegments = segments
 
 
-class Primitive(dag.DAGNode):
+class Primitive(dag.DAGLeaf):
 	def __init__(s, extent):
-		dag.DAGNode.__init__(s)
+		dag.DAGLeaf.__init__(s)
 		s.extent = extent
 
 	def __str__(s):
 		return f"{s.__class__.__name__}({s.extent})"
 
 
-class Primitive2D(dag.DAGNode):
+class Primitive2D(Primitive):
 	def __init__(s, extent):
 		Primitive.__init__(s, extent)
 
 
-class Primitive3D(dag.DAGNode):
+class Primitive3D(Primitive):
 	def __init__(s, extent):
 		Primitive.__init__(s, extent)
 

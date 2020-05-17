@@ -102,10 +102,10 @@ class CylinderPrimitive(Primitive3D):
 
 
 class RectPrimitive(Primitive2D):
-	def __init__(s, x=None, y=None, roundingLevel=0, r=None):
+	def __init__(s, x=None, y=None, roundingLevel=0, r=None, roundingSegments=32):
 		extent = usability.getFlexibleExtent2(x, y)
 
-		processRoundingData(s, roundingLevel, r, 1)
+		processRoundingData(s, roundingLevel, r, 1, roundingSegments)
 		Primitive2D.__init__(s, extent)
 
 	def __str__(s):

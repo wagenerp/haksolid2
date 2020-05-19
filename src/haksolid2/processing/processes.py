@@ -28,13 +28,16 @@ class ProcessBase:
 
 	def __init__(s, outputDirectory=None):
 		s._outputDirectory = outputDirectory
+	
+	def __str__(s):
+		return s.__class__.__name__
 
 	def getOutputDirectory(s, create=False):
 
 		if s._outputDirectory is not None:
 			res = s._outputDirectory
-		elif ProcessBase.DefaultDirectory is not None:
-			res = ProcessBase.DefaultDirectory
+		elif s.DefaultDirectory is not None:
+			res = s.DefaultDirectory
 		else:
 			res = fn_main_dir
 

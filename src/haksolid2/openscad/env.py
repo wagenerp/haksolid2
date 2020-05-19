@@ -7,13 +7,13 @@ from ..openscad import *
 from ..usability import *
 from ..math import *
 from ..processing.cli import climain
-from ..dag import DAGModule
+from ..dag import DAGModule, DAGGroup
 from ..prefabs import *
 from ..paradigms import *
 from ..exporters import *
 
 part.SetDefaultProcess(OpenSCADBuild())
 arrangement.SetDefaultProcess(
-  OpenSCADSource(useClangFormat=True,
+  OpenSCADSource(useClangFormat=False,
                  layerFilter=ClassLayerFilter(previewLayer),
                  processPreview=True))

@@ -56,8 +56,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		s.absTransform = M()
 
 	def segmentCode(s, node, n=None, first=False):
-		if n is None:
-			n = node.segments
+		if n is None: return ""
 		if (hasattr(node, "explicit") and
 		    getattr(node, "explicit")) or s.useSegmentCount:
 			if first:
@@ -125,7 +124,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				pass
 
 		elif isinstance(node, primitives.SpherePrimitive):
-			s.addLeaf(f"sphere(d={scad_repr(node.extent.x)}{s.segmentCode(node)})")
+			s.addLeaf(
+			  f"sphere(d={scad_repr(node.extent.x)}{s.segmentCode(node,node.segments)})"
+			)
 		elif isinstance(node, primitives.CylinderPrimitive):
 			if node.roundingLevel == 0:
 				s.addLeaf(f"""
@@ -133,7 +134,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 						r1={scad_repr(node.r0)},
 						r2={scad_repr(node.r1)},
 						h={scad_repr(node.extent.z)}
-						{s.segmentCode(node)}
+						{s.segmentCode(node,node.segments)}
 						,center=true)""")
 			elif node.roundingLevel == 1:
 				r0, r1, R, h = node.r0, node.r1, node.roundingRadius, node.extent.z
@@ -186,7 +187,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 
 		elif isinstance(node, primitives.CirclePrimitive):
 			if node.roundingLevel == 0:
-				s.addLeaf(f"circle(d={scad_repr(node.extent.x)}{s.segmentCode(node)})")
+				s.addLeaf(
+				  f"circle(d={scad_repr(node.extent.x)}{s.segmentCode(node,node.segments)})"
+				)
 			elif node.roundingLevel == 1:
 				ida = 360 / node.segments
 				r = node.extent.x * 0.5 - node.roundingRadius / cos(pi / node.segments)
@@ -222,7 +225,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			s.addNode(f"minkowski()")
 		elif isinstance(node, operations.offset):
 			if node.round:
-				s.addNode(f"offset(r={scad_repr(node.offset)})")
+				s.addNode(
+				  f"offset(r={scad_repr(node.offset)}{s.segmentCode(node,node.segments)})"
+				)
 			else:
 				s.addNode(f"offset(delta={scad_repr(node.offset)})")
 		elif isinstance(node, operations.Hull):
@@ -258,12 +263,12 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				T0 = T1
 			s.code += "}"
 			return False
-		
+
 		elif isinstance(node, operations.slicePlane):
 			s.addLeaf("projection(cut=true)")
 		elif isinstance(node, operations.projection):
 			s.addLeaf("projection(cut=false)")
-			
+
 		elif isinstance(node, metadata.color):
 			color = list(node.getColor()) + [node.alpha]
 			s.addNode(f"color({scad_repr(color)})")

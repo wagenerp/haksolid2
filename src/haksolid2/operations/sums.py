@@ -13,13 +13,15 @@ class minkowski(SumOperation):
 
 
 class offset(SumOperation):
-	def __init__(s, offset, round=True):
+	def __init__(s, offset, round=True, segments=None):
 		SumOperation.__init__(s)
 		s.offset = offset
 		s.round = round
+		s.segments = segments
 
 	def __str__(s):
 		return f"offset({s.offset} {'round' if s.round else ''})"
+
 
 class Hull(SumOperation):
 	pass

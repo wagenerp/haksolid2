@@ -19,6 +19,7 @@ class OpenSCADSource(processing.ProcessBase):
 	             layerFilter=None,
 	             processPreview=False,
 	             useSegmentCount=True,
+	             defaultSegments=None,
 	             *args,
 	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
@@ -26,6 +27,7 @@ class OpenSCADSource(processing.ProcessBase):
 		s.processPreview = processPreview
 		s.useClangFormat = useClangFormat
 		s.useSegmentCount = useSegmentCount
+		s.defaultSegments = None
 
 	def __call__(s, ent: processing.EntityRecord):
 
@@ -61,6 +63,8 @@ class OpenSCADSource(processing.ProcessBase):
 				  RuntimeWarning)
 
 		with open(fn_scad, "w") as f:
+			if s.defaultSegments is not None:
+				f.write(f"$fn={codegen.scad_repr(s.defaultSegments)};")
 			f.write(code)
 
 		return res
@@ -89,6 +93,7 @@ class OpenSCADBuild(processing.ProcessBase):
 	             outputGeometry=False,
 	             outputFormat=None,
 	             useSegmentCount=True,
+	             defaultSegments=None,
 	             *args,
 	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
@@ -99,6 +104,7 @@ class OpenSCADBuild(processing.ProcessBase):
 		s.outputGeometry = outputGeometry
 		s.outputFormat = outputFormat
 		s.useSegmentCount = useSegmentCount
+		s.defaultSegments = None
 
 	def __call__(s, ent: processing.EntityRecord):
 
@@ -128,6 +134,8 @@ class OpenSCADBuild(processing.ProcessBase):
 		try:
 			os.chdir(fn_tmp)
 			with open("code.scad", "w") as f:
+				if s.defaultSegments is not None:
+					f.write(f"$fn={codegen.scad_repr(s.defaultSegments)};")
 				f.write(vcodegen.code)
 
 			p = subprocess.Popen(["openscad", "-o", fn_out, "code.scad"],

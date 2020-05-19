@@ -4,7 +4,7 @@ from .. import transform
 from ..math import *
 
 
-def processRoundingData(s, roundingLevel, r, maxRoundingLevel, segments=32):
+def processRoundingData(s, roundingLevel, r, maxRoundingLevel, segments=None):
 
 	if roundingLevel < 0 or roundingLevel > maxRoundingLevel or not isinstance(
 	  roundingLevel, int):
@@ -45,7 +45,7 @@ class CuboidPrimitive(Primitive3D):
 	             z=None,
 	             roundingLevel=0,
 	             r=None,
-	             roundingSegments=32):
+	             roundingSegments=None):
 		extent = usability.getFlexibleExtent3(x, y, z)
 
 		processRoundingData(s, roundingLevel, r, 2, roundingSegments)
@@ -60,7 +60,7 @@ class CuboidPrimitive(Primitive3D):
 
 
 class SpherePrimitive(Primitive3D):
-	def __init__(s, r=None, d=None, segments=32):
+	def __init__(s, r=None, d=None, segments=None):
 		s.segments = segments
 
 		r = usability.getFlexibleRadius(r, d)
@@ -81,11 +81,11 @@ class CylinderPrimitive(Primitive3D):
 	             d0=None,
 	             r1=None,
 	             d1=None,
-	             segments=32,
+	             segments=None,
 	             explicit=False,
 	             roundingLevel=0,
 	             r2=None,
-	             roundingSegments=32):
+	             roundingSegments=None):
 		s.segments = segments
 		s.explicit = explicit
 
@@ -110,7 +110,7 @@ class CylinderPrimitive(Primitive3D):
 
 
 class RectPrimitive(Primitive2D):
-	def __init__(s, x=None, y=None, roundingLevel=0, r=None, roundingSegments=32):
+	def __init__(s, x=None, y=None, roundingLevel=0, r=None, roundingSegments=None):
 		extent = usability.getFlexibleExtent2(x, y)
 
 		processRoundingData(s, roundingLevel, r, 1, roundingSegments)
@@ -127,11 +127,11 @@ class CirclePrimitive(Primitive2D):
 	def __init__(s,
 	             r=None,
 	             d=None,
-	             segments=32,
+	             segments=None,
 	             explicit=False,
 	             roundingLevel=0,
 	             r2=None,
-	             roundingSegments=32):
+	             roundingSegments=None):
 		s.segments = segments
 		s.explicit = explicit
 

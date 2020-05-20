@@ -370,3 +370,118 @@ class FaceSoup:
 					if len(vertices) < 1: vertices.append(p)
 					p = V(float(x), -float(y))
 					vertices.append(p)
+
+
+class aabb_t:
+	"""Structure used to represent two or three dimensional axis-aligned bounding boxes.
+	In addition to a non-empty bounding box with extent and offset, this type
+	can represent *empty* boxes as well as various comparisons and combinations
+	of bounding boxes.
+	"""
+	def __init__(s, min, max):
+		if min is None or max is None:
+			s.min = None
+			s.max = None
+		else:
+			s.min = V(*min)
+			s.max = V(*max)
+
+	@classmethod
+	def Empty(cls):
+		return aabb_t(None, None)
+
+	@property
+	def empty(s):
+		return s.min is None or s.max is None
+
+	@property
+	def extent(s):
+		if s.empty: return V(0, 0, 0)
+		return s.max - s.min
+
+	@property
+	def center(s):
+		if s.empty: return V(0, 0, 0)
+		return (s.max + s.min) / 2
+
+	def __str__(s):
+		if s.empty:
+			return "aabb_t.Empty()"
+		else:
+			return "aabb_t(%s,%s)" % (s.min, s.max)
+
+	def __eq__(s, b):
+		if not isinstance(b, aabb_t):
+			raise TypeError("cannot compare %s with %s" % (type(s), type(b)))
+		if s.empty() and b.empty():
+			return True
+		return s.min == b.min and s.max == b.max
+
+	def __add__(s, b):
+		"""Returns the union of two bounding boxes, i.e. a new bounding box that encompasses both."""
+		if isinstance(b, aabb_t):
+			if s.empty: return aabb_t(b.min, b.max)
+			if b.empty: return aabb_t(s.min, s.max)
+			return aabb_t(V(min(pair) for pair in zip(s.min, b.min)),
+			              V(max(pair) for pair in zip(s.max, b.max)))
+
+		elif isinstance(b, Iterable):
+			if s.empty: return aabb_t.Empty()
+			vec = [v for v in b]
+			if len(vec) == 2:
+				vec += [0]
+			elif len(vec) != 3:
+				raise ValueError("oobb offsets must have two or three dimensions")
+			return aabb_t(V(*s.min) + V(*vec), V(*s.max) + V(*vec))
+
+		else:
+			raise TypeError("cannot add %s to %s" % (type(s), type(b)))
+
+	def __iadd__(s, b):
+		"""Enlarges this bounding box to accommodate another"""
+
+		if isinstance(b, aabb_t):
+			if s.empty:
+				s.min = b.min
+				s.max = b.max
+			if b.empty: return s
+			s.min = V(min(pair) for pair in zip(s.min, b.min))
+			s.max = V(max(pair) for pair in zip(s.max, b.max))
+			return s
+
+		elif isinstance(b, Iterable):
+			if s.empty: return
+			vec = [v for v in b]
+			if len(vec) == 2:
+				vec += [0]
+			elif len(vec) != 3:
+				raise ValueError("oobb offsets must have two or three dimensions")
+			s.min = s.min + V(*vec)
+			s.max = s.max + V(*vec)
+			return s
+
+		else:
+			raise TypeError("cannot add %s to %s" % (type(s), type(b)))
+
+	def __mul__(s, b):
+		"""Transforms a bounding box with a given matrix"""
+		if isinstance(b, M):
+			if s.empty: return aabb_t.Empty()
+
+			base = [s.min, s.max]
+			vectors = [
+			  numpy.dot(b, V(base[x].x, base[y].y, base[z].z, 1)).xyz for x in (0, 1)
+			  for y in (0, 1) for z in (0, 1)
+			]
+
+			return aabb_t(V(min(v[k] for v in vectors) for k in range(3)),
+			              V(max(v[k] for v in vectors) for k in range(3)))
+
+		else:
+			raise TypeError("cannot multiply %s with %s" % (type(s), type(b)))
+
+	def intersection(s, b):
+		"""Returns a new bounding box encompassing the intersection of two others."""
+		if s.empty or b.empty: return aabb_t.Empty()
+		return aabb_t(V(max(pair) for pair in zip(s.min, b.min)),
+		              V(min(pair) for pair in zip(s.max, b.max)))

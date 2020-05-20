@@ -334,6 +334,9 @@ class DAGAnchor(DAGLeaf):
 class DAGGroup(DAGNode):
 	"""Generic grouping node to be ignored by all visitors."""
 
+class DAGVirtualRoot(DAGGroup):
+	"""Symbolic node used to indicate a topological root that is not to be used for absolute transform finding."""
+
 def DAGModule(func):
 	"""Function annotation turning that function into a DAG module that returns an expression usable in DAG construction. Attachments are defined explicitly via DAGAnchors positioned within the function. These anchors are removed after function termination. If no DAGAnchors are present, the DAGModule simply uses its root to append new nodes to."""
 	def wrapper(*args, **kwargs):

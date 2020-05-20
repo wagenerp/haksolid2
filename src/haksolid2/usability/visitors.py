@@ -47,18 +47,22 @@ class AllAbsTransformsVisitor(dag.DAGVisitor):
 		s.transformStack.append(M())
 		s.absTransform = M()
 		s.isRoot = False
+		s.currentNode = None
 
 	def __call__(s, node):
 		s.isRoot = False
+		s.currentNode = node
 		if isinstance(node, transform.AffineTransform):
 			s.absTransform = node.matrix @ s.transformStack[-1]
 		elif isinstance(node, transform.untransform):
 			s.absTransforms.append(s.absTransform)
 			return False
-
+		elif isinstance(node, dag.DAGVirtualRoot):
+			return False
+			
 	def descent(s):
 		s.transformStack.append(M(s.absTransform))
-		s.isRoot = True
+		s.isRoot = not isinstance(s.currentNode, dag.DAGVirtualRoot)
 
 	def ascend(s):
 		if s.isRoot:

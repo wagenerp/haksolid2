@@ -220,7 +220,18 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		elif isinstance(node, operations.difference):
 			s.addNode(f"difference()")
 		elif isinstance(node, operations.intersection):
+			if node.skipIfEmpty:
+				n_nonempty = 0
+				for child in node.children:
+					v = metadata.DimensionVisitor()
+					child.visitDescendants(v)
+					if not v.empty:
+						n_nonempty += 1
+						if n_nonempty > 1:
+							break
+				if n_nonempty < 2: return False
 			s.addNode(f"intersection()")
+
 		elif isinstance(node, operations.minkowski):
 			s.addNode(f"minkowski()")
 		elif isinstance(node, operations.offset):

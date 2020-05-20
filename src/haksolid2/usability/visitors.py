@@ -1,5 +1,4 @@
 from .. import dag
-from .. import metadata
 from .. import transform
 from ..math import *
 
@@ -39,20 +38,6 @@ class TransformVisitor(dag.DAGVisitor):
 	def ascend(s):
 		s.transformStack.pop()
 		s.absTransform = s.transformStack[-1]
-
-
-class LayersVisitor(TransformVisitor):
-	def __init__(s, shallow):
-		TransformVisitor.__init__(s)
-		s.layers = list()
-		s.shallow = shallow
-
-	def __call__(s, node):
-		TransformVisitor.__call__(s, node)
-
-		if isinstance(node, metadata.DAGLayer):
-			s.layers.append((M(s.absTransform), node))
-			if s.shallow: return False
 
 
 class AllAbsTransformsVisitor(dag.DAGVisitor):

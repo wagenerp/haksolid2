@@ -73,7 +73,7 @@ class Ultralaser(lasercut.LasercutProcess):
 		subproc = openscad.OpenSCADBuild(outputFile=False, outputGeometry=True)
 
 		if True: # add all sub-layers to the mix
-			layers = usability.LayersVisitor(shallow=False)
+			layers = metadata.LayersVisitor(shallow=False)
 			ent.node.visitDescendants(layers)
 
 			for T, layer in layers.layers:

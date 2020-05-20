@@ -282,7 +282,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 
 		elif s.processPreview and isinstance(node, processing.EntityNode):
 			if isinstance(node.process, paradigms.lasercut.LasercutProcess):
-				layers = usability.LayersVisitor(shallow=True)
+				layers = metadata.LayersVisitor(shallow=True)
 				node.visitDescendants(layers)
 
 				holes = ""

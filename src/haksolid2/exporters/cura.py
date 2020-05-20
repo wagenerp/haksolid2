@@ -136,7 +136,7 @@ class Cura(processing.ProcessBase):
 			object_count += 1
 
 		if True: # add all sub-layers to the mix
-			layers = usability.LayersVisitor(shallow=False)
+			layers = metadata.LayersVisitor(shallow=False)
 			ent.node.visitDescendants(layers)
 
 			for T, layer in layers.layers:

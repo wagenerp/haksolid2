@@ -1,5 +1,6 @@
 from .. import dag
 from ..math import *
+from .. import usability
 
 
 class DAGLayer(dag.DAGGroup):
@@ -8,7 +9,7 @@ class DAGLayer(dag.DAGGroup):
 
 	def __init__(s):
 		dag.DAGGroup.__init__(s)
-	
+
 	def __str__(s):
 		return f"{s.__class__.__name__}({s.color} {s.alpha*100}%)"
 
@@ -21,8 +22,10 @@ class previewLayer(DAGLayer):
 class nonpreviewLayer(DAGLayer):
 	pass
 
+
 class SubprocessLayer(DAGLayer):
 	pass
+
 
 class LayerFilter:
 	def __call__(s, layer: DAGLayer):
@@ -44,4 +47,18 @@ class ClassLayerFilter(LayerFilter):
 		s.classes = tuple(classes)
 
 	def __call__(s, layer: DAGLayer):
-		return isinstance(layer,s.classes)
+		return isinstance(layer, s.classes)
+
+
+class LayersVisitor(usability.TransformVisitor):
+	def __init__(s, shallow):
+		usability.TransformVisitor.__init__(s)
+		s.layers = list()
+		s.shallow = shallow
+
+	def __call__(s, node):
+		usability.TransformVisitor.__call__(s, node)
+
+		if isinstance(node, metadata.DAGLayer):
+			s.layers.append((M(s.absTransform), node))
+			if s.shallow: return False

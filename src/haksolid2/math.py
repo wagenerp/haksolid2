@@ -302,7 +302,7 @@ class M(numpy.ndarray):
 			res = M.Rotation(angs)
 
 		if p is not None:
-			res = M.Translation(p) @ M
+			res = M.Translation(p) @ res
 		return res
 
 

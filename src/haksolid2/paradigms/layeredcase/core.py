@@ -13,6 +13,9 @@ class Component:
 		s.rotation = r
 		s.flipped = flipped
 
+	def build(s, layer):
+		pass
+
 	@property
 	def boundingBox(s) -> (V, V):
 		raise NotImplementedError()
@@ -119,12 +122,14 @@ class Layer:
 
 	def addComponent(s, c: Component):
 		s.components.append(c)
+		return c
 
 	def build(s):
 		s.height_above = 0
 		s.height_below = 0
 
 		for comp in s.components:
+			comp.build(s)
 			boxMin, boxMax = comp.boundingBox
 
 			maxz = boxMax.z
@@ -132,9 +137,9 @@ class Layer:
 
 			if comp.flipped:
 				s.height_below = max(s.height_below, maxz)
-				s.height_above = max(s.height_below, minz)
+				s.height_above = max(s.height_above, minz)
 			else:
-				s.height_above = max(s.height_below, maxz)
+				s.height_above = max(s.height_above, maxz)
 				s.height_below = max(s.height_below, minz)
 
 	@dag.DAGModule

@@ -30,7 +30,7 @@ class V(numpy.ndarray):
 			return numpy.ndarray.__new__(
 			  s,
 			  shape=(len(args), ),
-			  buffer=numpy.array([sympy.core.Mul(1, v).simplify() for v in args]),
+			  buffer=numpy.array([sympy.core.Mul(1, v) for v in args]),
 			  dtype=sympy.core.Expr)
 		return numpy.ndarray.__new__(s,
 		                             shape=(len(args), ),
@@ -128,7 +128,7 @@ class M(numpy.ndarray):
 
 			if is_symbolic:
 				for row in A:
-					values += [sympy.core.Mul(1, v).simplify() for v in row]
+					values += [sympy.core.Mul(1, v) for v in row]
 
 				return numpy.ndarray.__new__(s,
 				                             shape=(
@@ -173,7 +173,7 @@ class M(numpy.ndarray):
 
 		if is_symbolic:
 			for arg in args:
-				values += [sympy.core.Mul(1, v).simplify() for v in arg]
+				values += [sympy.core.Mul(1, v) for v in arg]
 		else:
 			for arg in args:
 				values += [float(v) for v in arg]

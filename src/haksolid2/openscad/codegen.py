@@ -44,6 +44,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		usability.TransformVisitor.__init__(s)
 		s.code = ""
 		s.variables = dict()
+		s.variable_list = list()
 
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
@@ -344,7 +345,12 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		elif isinstance(node, dag.DAGGroup):
 			s.addNode("union()")
 		elif isinstance(node, metadata.variable):
-			s.variables[node.ident] = node
+			if node.ident not in s.variables:
+				s.variables[node.ident] = node
+				s.variable_list.append(node)
+			else:
+				raise Exception(f"variable redeclared: {node.ident}")
+
 		elif isinstance(node, metadata.conditional):
 			s.addNode(f"if ({scad_repr(node.expr)})")
 		elif isinstance(node, metadata.runtime_assertion):
@@ -367,8 +373,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 
 		current_group = None
 
-		for _, v in sorted(s.variables.items(),
-		                   key=lambda v: (v[1].group or '', v[1].ident)):
+		for _, v in sorted(enumerate(s.variable_list),
+		                   key=lambda v: (v[1].group or '', v[0])):
 			if v.group != current_group:
 				current_group = v.group
 				varcode += f"/* [{current_group}] */\n"
@@ -383,7 +389,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 
 		varcode += "/* [Hidden] */\n"
 
-		for _, v in s.variables.items():
+		for v in s.variable_list:
 
 			if v.isBool:
 				varcode += f"{v.symbol} = {v.ident} ? 1 : 0;\n"

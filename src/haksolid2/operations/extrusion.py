@@ -20,8 +20,9 @@ class LinearExtrude(ExtrusionNode):
 
 
 class rotate_extrude(ExtrusionNode):
-	def __init__(s):
+	def __init__(s, segments=None):
 		ExtrusionNode.__init__(s)
+		s.segments = segments
 
 
 class MatrixExtrusionNode(ExtrusionNode):

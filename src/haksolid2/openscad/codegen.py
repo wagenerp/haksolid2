@@ -251,7 +251,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		elif isinstance(node, operations.LinearExtrude):
 			s.addLeaf(f"linear_extrude(height={scad_repr(node.amount)},center=true)")
 		elif isinstance(node, operations.rotate_extrude):
-			s.addLeaf(f"rotate_extrude()")
+			s.addLeaf(
+			  f"rotate_extrude({s.segmentCode(node,node.segments,first=True)})")
 		elif isinstance(node, operations.MatrixExtrusionNode):
 			s.addLeaf(f"union()")
 			s.code += "{"

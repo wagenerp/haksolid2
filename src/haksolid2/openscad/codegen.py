@@ -381,4 +381,13 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				varcode += "// " + " ".join(v.domain.splitlines())
 			varcode += "\n"
 
+		varcode += "/* [Hidden] */\n"
+
+		for _, v in s.variables.items():
+
+			if v.isBool:
+				varcode += f"{v.symbol} = {v.ident} ? 1 : 0;\n"
+			else:
+				varcode += f"{v.symbol} = {v.ident};\n"
+
 		s.code = varcode + s.code

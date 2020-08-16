@@ -16,7 +16,7 @@ class variable(dag.DAGLeaf):
 		s.domain = domain
 		s.group = group
 
-		s.symbol = sympy.Symbol(ident)
+		s.symbol = sympy.Symbol(f"_{ident}_actual")
 		# sympy.Symbol.__init__(s,ident)
 		dag.DAGLeaf.__init__(s)
 
@@ -27,6 +27,10 @@ class variable(dag.DAGLeaf):
 
 		dag.DAGLeaf.__invert__(s)
 		return s.symbol
+
+	@property
+	def isBool(s):
+		return type(s.default) == bool
 
 
 class conditional(dag.DAGNode):

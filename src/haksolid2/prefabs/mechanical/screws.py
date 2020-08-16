@@ -25,6 +25,33 @@ class ScrewDriver:
 		                        segments=segments))
 
 
+class CountersunkDriver:
+	def __init__(s, d_body, d_base, angle=120, clearance=None):
+		t = math.tan(angle / 2 * math.pi / 180)
+		s.d_body = d_body
+		s.d_base = d_base
+		s.h_body = (d_body - d_base) / (2 * t)
+		s.angle = angle
+		s.is_grub = False
+
+	@dag.DAGModule
+	def mod_body(s, segments=90):
+		~primitives.cylinder.nz(
+		  d0=s.d_base, d1=s.d_body, h=s.h_body, segments=segments)
+
+	@dag.DAGModule
+	def mod_cavity(s, clearance=0.2, protrusion=0, segments=90):
+		(~transform.translate([0, 0, -clearance]) *
+		 primitives.cylinder.nz(d0=s.d_base + clearance,
+		                        d1=s.d_body + clearance,
+		                        h=s.h_body + clearance * 2,
+		                        segments=segments))
+
+		if protrusion > 0:
+			(~transform.translate(z=s.h_body) * primitives.cylinder.nz(
+			  d=s.d_body + clearance, h=protrusion, segments=segments))
+
+
 class ExternalHexDriver(ScrewDriver):
 	def __init__(s, size_body, h_body, clearance=None):
 		ScrewDriver.__init__(s, size_body * (4 / 3)**0.5, h_body, False, clearance)

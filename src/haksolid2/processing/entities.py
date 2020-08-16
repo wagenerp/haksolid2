@@ -7,7 +7,14 @@ _named_entities = dict()
 
 
 class EntityRecord:
-	def __init__(s, cls, subject, name, description, process=None):
+	def __init__(s,
+	             cls,
+	             subject,
+	             name,
+	             description,
+	             process=None,
+	             args=None,
+	             kwargs=None):
 		if process is None:
 			process = cls.DefaultProcess
 
@@ -24,6 +31,12 @@ class EntityRecord:
 		s._name = name
 		s._description = description
 		s._process = process
+		if args is None:
+			args = list()
+		if kwargs is None:
+			kwargs = dict()
+		s._args = args
+		s._kwargs = kwargs
 
 	@property
 	def type(s):
@@ -44,7 +57,7 @@ class EntityRecord:
 	@property
 	def node(s):
 		if s._node is None:
-			s._node = s._subject()
+			s._node = s._subject(*s._args, **s._kwargs)
 		return s._node
 
 
@@ -85,16 +98,26 @@ def buildEntity(ent: EntityRecord):
 class EntityType:
 	DefaultProcess = None
 
-	def __new__(cls, name: str, description=None, process=None):
+	def __new__(cls,
+	            name: str,
+	            description=None,
+	            process=None,
+	            args=None,
+	            kwargs=None):
 		if process is None:
 			process = cls.DefaultProcess
 		node = EntityNode(process)
-		rec = EntityRecord(cls, node, name, description, process)
+		rec = EntityRecord(cls, node, name, description, process, args, kwargs)
 		registerEntity(rec)
 		return node
 
 	@classmethod
-	def module(cls, nameOrFunc=None, description=None, process=None):
+	def module(cls,
+	           nameOrFunc=None,
+	           description=None,
+	           process=None,
+	           args=None,
+	           kwargs=None):
 
 		if process is None:
 			process = cls.DefaultProcess
@@ -112,7 +135,8 @@ class EntityType:
 						func(*args, **kwargs)
 					return root.makeModule()
 
-				rec = EntityRecord(cls, wrapper, name, description, process)
+				rec = EntityRecord(cls, wrapper, name, description, process, args,
+				                   kwargs)
 				registerEntity(rec)
 
 				return wrapper
@@ -127,9 +151,51 @@ class EntityType:
 				return root.makeModule()
 
 			rec = EntityRecord(cls, wrapper, nameOrFunc.__name__, nameOrFunc.__doc__,
-			                   process)
+			                   process, args, kwargs)
 			registerEntity(rec)
 			return wrapper
+
+	@classmethod
+	def classmodule(cls,
+	                nameOrFunc=None,
+	                description=None,
+	                process=None,
+	                args=None,
+	                kwargs=None):
+		def wrapper(func):
+			def funcwrapper(*args, **kwargs):
+				root = EntityNode(process) * dag.DAGGroup()
+				with root:
+					func(*args, **kwargs)
+				return root.makeModule()
+
+			print("setting", f"register_with_entity_{cls.__name__}")
+			setattr(funcwrapper, f"register_with_entity_{cls.__name__}",
+			        (nameOrFunc if isinstance(nameOrFunc, str) else func.__name__,
+			         description if description is not None else func.__doc__,
+			         process, args, kwargs))
+			return classmethod(funcwrapper)
+
+		if isinstance(nameOrFunc, str) or nameOrFunc is None:
+			return wrapper
+		else:
+			return wrapper(nameOrFunc)
+
+	@classmethod
+	def moduleClass(me, it):
+		key = f"register_with_entity_{me.__name__}"
+		print("scanning ")
+		for ident in dir(it):
+			method = getattr(it, ident)
+			if not hasattr(method, key): continue
+			nameOrFunc, description, process, args, kwargs = getattr(method, key)
+			if not isinstance(nameOrFunc, str):
+				nameOrFunc = method.__name__
+			rec = EntityRecord(me, method, nameOrFunc, description, process, args,
+			                   kwargs)
+			registerEntity(rec)
+
+		return it
 
 	@classmethod
 	def SetDefaultProcess(cls, process: processes.ProcessBase):

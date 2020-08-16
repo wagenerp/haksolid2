@@ -22,7 +22,7 @@ def scad_repr(data):
 		if math.isnan(data): return "(0/0)"
 		elif math.isinf(data): return "(1e200*1e200)"
 		else: return repr(data)
-	elif isinstance(data, sympy.core.Expr):
+	elif isinstance(data, (sympy.core.Expr, sympy.core.relational.Relational)):
 		return str(data)
 	elif type(data) == str:
 		data_enc = "".join(v if v != '"' else '\\"' for v in data)
@@ -347,6 +347,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			s.variables[node.ident] = node
 		elif isinstance(node, metadata.conditional):
 			s.addNode(f"if ({scad_repr(node.expr)})")
+		elif isinstance(node, metadata.runtime_assertion):
+			s.addNode(f"assert ({scad_repr(node.expr)},{scad_repr(node.message)})")
 		else:
 			warnings.warn(
 			  errors.UnsupportedFeatureWarning(f"OpenSCAD cannot handle {node}"))

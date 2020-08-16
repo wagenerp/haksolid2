@@ -34,3 +34,11 @@ class conditional(dag.DAGNode):
 		s.expr = expr
 
 		dag.DAGNode.__init__(s)
+
+
+class runtime_assertion(dag.DAGLeaf):
+	def __init__(s, expr, message):
+		s.expr = expr
+		s.message = message
+
+		dag.DAGLeaf.__init__(s)

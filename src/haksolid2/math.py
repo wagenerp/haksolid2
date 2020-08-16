@@ -357,6 +357,42 @@ class M(numpy.ndarray):
 			res = M.Translation(p) @ res
 		return res
 
+	@classmethod
+	def FromSVGTransform(cls, code):
+
+		e_transformation_arguments = re.compile(r"([0-9.e+-]+)")
+		e_transformation_ops = re.compile(r"([a-z]+)\s*\(\s*([^)]*?)\s*\)")
+
+		m = M()
+
+		for op, argstr in e_transformation_ops.findall(code):
+			args = tuple(float(v) for v in e_transformation_arguments.findall(argstr))
+			if op == "translate":
+				m = M.Translation(args) @ m
+			elif op == "rotate":
+				ang = -args[0] if len(args) > 0 else 0
+				x = args[1] if len(args) > 1 else 0
+				y = args[2] if len(args) > 2 else 0
+
+				m = M.Translation((x, y)) @ M.RotationZ(ang) @ M.Translation(
+				  (-x, -y)) @ m
+			elif op == "matrix":
+				m = M([
+				  [args[0], args[1], 0, args[2]],
+				  [args[3], args[4], 0, args[5]],
+				  [0, 0, 1, 0],
+				  [0, 0, 0, 1],
+				]) @ m
+			elif op == "scale":
+				x = args[0] if len(args) > 0 else 1
+				y = args[1] if len(args) > 1 else x
+				m = M.Scale((x, y, 1)) @ m
+
+			else:
+				raise RuntimeError(f"unsupported transform op: {op}")
+
+		return m
+
 
 face_t = namedtuple("face_t", "normal vertices")
 

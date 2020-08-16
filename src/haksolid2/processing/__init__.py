@@ -1,2 +1,2 @@
-from .entities import EntityDefinitionWarning, EntityRecord, EntityType, part, arrangement, EntityNode, buildEntity
+from .entities import EntityDefinitionWarning, EntityRecord, EntityType, part, arrangement, EntityNode, registerEntity, buildEntity
 from .processes import ProcessBase, ProcessResults, ProcessResultViewer, SubprocessResultViewer

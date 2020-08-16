@@ -217,7 +217,7 @@ class Thread:
 
 	@dag.DAGModule
 	def mod_hexnut(s):
-		with ~operations.linear_extrude(height=s.h_nut) * operations.difference():
+		with ~operations.linear_extrude(s.h_nut) * operations.difference():
 			~primitives.circle(d=s.d_nut, segments=6)
 			~primitives.circle(d=s.d_maj, segments=60)
 		~s.internal(length=s.h_nut)

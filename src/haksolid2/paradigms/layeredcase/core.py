@@ -5,6 +5,7 @@ from haksolid2 import operations
 from haksolid2 import transform
 from haksolid2 import metadata
 from haksolid2 import prefabs
+from haksolid2 import processing
 
 
 class Component:
@@ -13,7 +14,7 @@ class Component:
 		s.rotation = r
 		s.flipped = flipped
 
-	def build(s, layer):
+	def build(s, layer, ident: str):
 		pass
 
 	@property
@@ -124,12 +125,12 @@ class Layer:
 		s.components.append(c)
 		return c
 
-	def build(s):
+	def build(s, ident: str):
 		s.height_above = 0
 		s.height_below = 0
 
-		for comp in s.components:
-			comp.build(s)
+		for i_comp, comp in enumerate(s.components):
+			comp.build(s, f"{ident}-comp{i_comp}")
 			boxMin, boxMax = comp.boundingBox
 
 			maxz = boxMax.z
@@ -274,20 +275,45 @@ class Case:
 		x1 = 0
 		y0 = 0
 		y1 = 0
-		for layer in s.layers:
-			layer.build()
+		layer0 = None
+		for i_layer, layer in enumerate(s.layers):
+			layer.build(f"{s.ident}-layer{i_layer}")
+
+			processing.registerEntity(
+			  processing.EntityRecord(processing.part, layer.mod_plate,
+			                          f"{s.ident}-layer{i_layer}", "",
+			                          processing.part.DefaultProcess, list(), dict()))
+
+			processing.registerEntity(
+			  processing.EntityRecord(processing.part, s.mod_frame,
+			                          f"{s.ident}-frame{i_layer}", "",
+			                          processing.part.DefaultProcess, (layer0, layer),
+			                          dict()))
+			layer0 = layer
 			for comp in layer.components:
 				boxMin, boxMax = comp.boundingBox
 
-				x0 = min(x0, boxMin.x + comp.position.x)
-				x1 = max(x1, boxMax.x + comp.position.x)
-				y0 = min(y0, boxMin.y + comp.position.y)
-				y1 = max(y1, boxMax.y + comp.position.y)
+				T = M.Translation(comp.position) @ M.RotationZ(comp.rotation)
+
+				for v in (V(boxMin.x, boxMin.y), V(
+				  boxMax.x, boxMin.y), V(boxMin.x, boxMax.y), V(boxMax.x, boxMax.y)):
+					w = (T @ v.xyno).xy
+
+					x0 = min(x0, w.x)
+					x1 = max(x1, w.x)
+					y0 = min(y0, w.y)
+					y1 = max(y1, w.y)
 
 		s.size_inner = V(x1 - x0, y1 - y0)
 		s.offset_inner = V(-x0, -y0)
 
 		s.screw_pattern.build(s)
+
+		processing.registerEntity(
+		  processing.EntityRecord(processing.part, s.mod_frame,
+		                          f"{s.ident}-frame{len(s.layers)}", "",
+		                          processing.part.DefaultProcess, (layer0, None),
+		                          dict()))
 
 	@dag.DAGModule
 	def mod_assembly(s, explode=30):

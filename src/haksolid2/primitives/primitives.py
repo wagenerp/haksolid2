@@ -92,7 +92,7 @@ class CylinderPrimitive(Primitive3D):
 		if h is None: raise ValueError("missing height")
 		r0, r1 = usability.getFlexibleDualRadius(r, d, r0, d0, r1, d1)
 
-		r = max(r0, r1)
+		r= 0.05*(r0+r1 + abs(r0-r1)) # sympy-friendly max
 		extent = V(r * 2, r * 2, h)
 		s.r0 = r0
 		s.r1 = r1

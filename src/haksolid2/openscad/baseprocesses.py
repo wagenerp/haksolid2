@@ -37,6 +37,7 @@ class OpenSCADSource(processing.ProcessBase):
 		                                  processPreview=s.processPreview,
 		                                  useSegmentCount=s.useSegmentCount)
 		ent.node.visitDescendants(visitor)
+		visitor.finish()
 
 		fn_scad = os.path.join(s.getOutputDirectory(True), ent.name + ".scad")
 		res.files.append(fn_scad)
@@ -114,6 +115,7 @@ class OpenSCADBuild(processing.ProcessBase):
 		                                   processPreview=s.processPreview,
 		                                   useSegmentCount=s.useSegmentCount)
 		ent.node.visitDescendants(vcodegen)
+		vcodegen.finish()
 
 		vdim = metadata.DimensionVisitor()
 		ent.node.visitDescendants(vdim)

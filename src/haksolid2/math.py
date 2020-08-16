@@ -3,6 +3,7 @@ import numpy
 from collections import Iterable, namedtuple
 from math import cos, sin, pi
 import shlex
+import sympy
 
 
 class V(numpy.ndarray):
@@ -19,6 +20,18 @@ class V(numpy.ndarray):
 			else:
 				args = [arg]
 
+		is_symbolic = False
+		for arg in args:
+			if isinstance(arg, sympy.core.Expr):
+				is_symbolic = True
+				break
+
+		if is_symbolic:
+			return numpy.ndarray.__new__(
+			  s,
+			  shape=(len(args), ),
+			  buffer=numpy.array([sympy.core.Mul(1, v).simplify() for v in args]),
+			  dtype=sympy.core.Expr)
 		return numpy.ndarray.__new__(s,
 		                             shape=(len(args), ),
 		                             buffer=numpy.array([float(v) for v in args]),
@@ -102,16 +115,39 @@ class M(numpy.ndarray):
 			n = len(A)
 			m = len(A[0])
 			values = list()
-			for row in A:
-				values += [float(v) for v in row]
 
-			return numpy.ndarray.__new__(s,
-			                             shape=(
-			                               n,
-			                               m,
-			                             ),
-			                             buffer=numpy.array(values),
-			                             dtype=float)
+			is_symbolic = False
+			for row in A:
+				for cell in row:
+					if isinstance(cell, sympy.core.Expr):
+						is_symbolic = True
+						break
+				else:
+					continue
+				break
+
+			if is_symbolic:
+				for row in A:
+					values += [sympy.core.Mul(1, v).simplify() for v in row]
+
+				return numpy.ndarray.__new__(s,
+				                             shape=(
+				                               n,
+				                               m,
+				                             ),
+				                             buffer=numpy.array(values),
+				                             dtype=sympy.core.Expr)
+			else:
+				for row in A:
+					values += [float(v) for v in row]
+
+				return numpy.ndarray.__new__(s,
+				                             shape=(
+				                               n,
+				                               m,
+				                             ),
+				                             buffer=numpy.array(values),
+				                             dtype=float)
 
 			return numpy.ndarray.__new__(s, args[0])
 		if len(args) < 1:
@@ -119,21 +155,37 @@ class M(numpy.ndarray):
 		n = len(args)
 		m = len(args[0])
 
+		is_symbolic = False
+		for row in args:
+			for cell in row:
+				if isinstance(cell, sympy.core.Expr):
+					is_symbolic = True
+					break
+			else:
+				continue
+			break
+
 		for arg in args:
 			if len(arg) != m:
 				raise ValueError("matrix rows must have equal length")
 
 		values = []
-		for arg in args:
-			values += [float(v) for v in arg]
 
-		return numpy.ndarray.__new__(s,
-		                             shape=(
-		                               n,
-		                               m,
-		                             ),
-		                             buffer=numpy.array(values),
-		                             dtype=float)
+		if is_symbolic:
+			for arg in args:
+				values += [sympy.core.Mul(1, v).simplify() for v in arg]
+		else:
+			for arg in args:
+				values += [float(v) for v in arg]
+
+		return numpy.ndarray.__new__(
+		  s,
+		  shape=(
+		    n,
+		    m,
+		  ),
+		  buffer=numpy.array(values),
+		  dtype=sympy.core.Expr if is_symbolic else float)
 
 	def __getattribute__(s, attr):
 		m = M.e_key.fullmatch(attr)

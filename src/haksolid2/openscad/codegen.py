@@ -22,6 +22,8 @@ def scad_repr(data):
 		if math.isnan(data): return "(0/0)"
 		elif math.isinf(data): return "(1e200*1e200)"
 		else: return repr(data)
+	elif isinstance(data, sympy.core.Expr):
+		return str(data)
 	elif type(data) == str:
 		data_enc = "".join(v if v != '"' else '\\"' for v in data)
 		return '"%s"' % data
@@ -41,6 +43,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 	             useSegmentCount=True):
 		usability.TransformVisitor.__init__(s)
 		s.code = ""
+		s.variables = dict()
+
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
 		s.useSegmentCount = useSegmentCount
@@ -338,6 +342,10 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				s.addNode("union()")
 		elif isinstance(node, dag.DAGGroup):
 			s.addNode("union()")
+		elif isinstance(node, metadata.variable):
+			s.variables[node.ident] = node
+		elif isinstance(node, metadata.conditional):
+			s.addNode(f"if ({scad_repr(node.expr)})")
 		else:
 			warnings.warn(
 			  errors.UnsupportedFeatureWarning(f"OpenSCAD cannot handle {node}"))
@@ -350,3 +358,24 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 	def ascend(s):
 		usability.TransformVisitor.ascend(s)
 		s.code += "};"
+
+	def finish(s):
+		varcode = str()
+
+		current_group = None
+
+		for _, v in sorted(s.variables.items(),
+		                   key=lambda v: (v[1].group or '', v[1].ident)):
+			if v.group != current_group:
+				current_group = v.group
+				varcode += f"/* [{current_group}] */\n"
+
+			if v.description is not None:
+				varcode += "".join(f"// {ln}\n" for ln in v.description.splitlines())
+
+			varcode += f"{v.ident} = {scad_repr(v.default)}; "
+			if v.domain is not None:
+				varcode += "// " + " ".join(v.domain.splitlines())
+			varcode += "\n"
+
+		s.code = varcode + s.code

@@ -1,7 +1,7 @@
 from .. import dag
 from ..math import *
 from .. import usability
-
+from .. import metadata
 
 class DAGLayer(dag.DAGGroup):
 	color = V(1, 1, 1)

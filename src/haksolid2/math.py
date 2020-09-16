@@ -1,7 +1,7 @@
 import re
 import numpy
 from collections import Iterable, namedtuple
-from math import cos, sin, pi
+from math import cos, sin, pi, asin, acos
 import shlex
 import sympy
 
@@ -27,11 +27,11 @@ class V(numpy.ndarray):
 				break
 
 		if is_symbolic:
-			return numpy.ndarray.__new__(
-			  s,
-			  shape=(len(args), ),
-			  buffer=numpy.array([sympy.core.Mul(1, v) for v in args]),
-			  dtype=sympy.core.Expr)
+			return numpy.ndarray.__new__(s,
+			                             shape=(len(args), ),
+			                             buffer=numpy.array(
+			                               [sympy.core.Mul(1, v) for v in args]),
+			                             dtype=sympy.core.Expr)
 		return numpy.ndarray.__new__(s,
 		                             shape=(len(args), ),
 		                             buffer=numpy.array([float(v) for v in args]),
@@ -392,6 +392,34 @@ class M(numpy.ndarray):
 				raise RuntimeError(f"unsupported transform op: {op}")
 
 		return m
+
+	def toAxisAngle(s):
+		R = s[:3, :3]
+		axis = V(0, 0, 0)
+		dmin = 1e99
+
+		evals, evecs = numpy.linalg.eig(R)
+
+		for i in range(len(evals)):
+			v = evals[i]
+			vec = evecs[:, i]
+
+			d = abs(v - 1)
+			if d < dmin:
+				dmin = d
+				axis = V(*vec)
+
+		v1 = V(axis.x + 1, axis.y + 2,
+		       axis.y + axis.x + axis.z + 3).cross(axis).normal
+		v2 = v1.cross(axis)
+
+		v1t = V(*(R @ v1)).normal
+
+		angle = acos(v1 @ v1t) * 180 / pi
+		if v2 @ v1t > 0:
+			angle = -angle
+
+		return axis, angle
 
 
 face_t = namedtuple("face_t", "normal vertices")

@@ -113,13 +113,102 @@ class HScrewPattern:
 		~operations.linear_extrude.n(h) * s.mod_lid_profile()
 
 
+class EdgeScrewPattern:
+	def __init__(s,
+	             screw: prefabs.mechanical.screws.Screw,
+	             minBacking=2,
+	             locations=list()):
+		s.offset = V(0, 0)
+		s.screw = screw
+		s.minBacking = minBacking
+		s.locations = list(locations)
+		s.edges = (
+		  (V(0, 0), V(0, 0)),
+		  (V(0, 0), V(0, 0)),
+		  (V(0, 0), V(0, 0)),
+		  (V(0, 0), V(0, 0)),
+		)
+
+	def build(s, case):
+		t = case.wall_thickness
+		d = case.size_inner
+		s.edges = (
+		  (V(d.x / 2, -t), V(1, 0)),
+		  (V(d.x + t, d.y / 2), V(0, 1)),
+		  (V(d.x / 2, d.y + t), V(-1, 0)),
+		  (V(-t, d.y / 2), V(0, -1)),
+		)
+		s.r1 = max(s.screw.driver.d_body / 2,
+		           s.screw.thread.d_nut / 2) + case.wall_thickness
+		s.fillet = case.wall_thickness
+
+	@dag.DAGModule
+	def at_anchors(s):
+		for (e, o) in s.locations:
+			p, d = s.edges[e]
+			~transform.translate(p + d * o) * transform.rotate(e * 90 -
+			                                                   90) * dag.DAGAnchor()
+
+	@dag.DAGModule
+	def mod_lid_profile(s):
+		with ~s.at_anchors():
+
+			with ~operations.difference():
+				with ~dag.DAGGroup():
+					~transform.translate(x=s.r1) * primitives.circle(r=s.r1, segments=180)
+					~primitives.rect.nx(s.r1, s.r1 * 4)
+				~transform.translate(x=s.r1) * primitives.circle(
+				  d=s.screw.thread.d_throughhole + 0.1, segments=180)
+
+				~transform.mirrordup(0, 1, 0) * transform.translate(
+				  s.r1, s.r1 * 2) * primitives.circle(r=s.r1, segments=180)
+
+	@dag.DAGModule
+	def mod_frame_bottom(s, layer):
+
+		h = s.screw.length - layer.thickness
+		# h = max(s.screw.thread.h_nut + s.minBacking, h / 2)
+		h = s.screw.thread.h_nut + s.minBacking
+
+		~operations.linear_extrude.p(h + s.fillet) * s.mod_lid_profile()
+
+		with operations.difference.emplace():
+			with ~s.at_anchors():
+
+				with ~transform.translate(s.fillet, 0, -h - s.fillet):
+					~transform.rotate(90, 0, 0) * primitives.cylinder(
+					  r=s.fillet, segments=90, h=s.r1 * 4)
+					~primitives.cuboid.nx(s.r1 * 4, s.r1 * 4, s.fillet * 2)
+
+				~transform.translate(s.r1, 0, -h) * s.screw.mod_nut_cavity(
+				  protrusion=s.fillet)
+
+	@dag.DAGModule
+	def mod_frame_top(s, layer):
+
+		h = s.screw.length - layer.thickness
+		# h = min(h - s.screw.thread.h_nut - s.minBacking, h / 2)
+		h = h - (s.screw.thread.h_nut + s.minBacking)
+
+		~operations.linear_extrude.n(h + s.fillet) * s.mod_lid_profile()
+
+		with operations.difference.emplace():
+			with ~s.at_anchors():
+
+				with ~transform.translate(s.fillet, 0, h + s.fillet):
+					~transform.rotate(90, 0, 0) * primitives.cylinder(
+					  r=s.fillet, segments=90, h=s.r1 * 4)
+					~primitives.cuboid.nx(s.r1 * 4, s.r1 * 4, s.fillet * 2)
+
+
 class Layer:
-	def __init__(s, case, thickness):
+	def __init__(s, case, thickness, binary):
 		s.components = list()
 		s.case = case
 		s.height_above = 0
 		s.height_below = 0
 		s.thickness = thickness
+		s.binary = binary
 
 	def addComponent(s, c: Component):
 		s.components.append(c)
@@ -159,12 +248,13 @@ class Layer:
 						~comp.mod_cutout()
 
 	@dag.DAGModule
-	def mod_plate(s):
+	def mod_plate(s, bottom=None):
 		~operations.linear_extrude.n(s.thickness) * s.mod_profile()
 
 		for comp in s.components:
 			with ~(transform.translate(comp.position + s.case.offset_inner) *
 			       transform.rotate(comp.rotation)):
+				if s.binary and (bottom is None or bottom != comp.flipped): continue
 				if comp.flipped:
 					~transform.rotate(0, 180, 0) * comp.mod_addendum()
 				else:
@@ -180,10 +270,11 @@ class Layer:
 						~transform.translate(z=s.thickness) * comp.mod_cavity()
 
 	@dag.DAGModule
-	def mod_preview(s):
+	def mod_preview(s, bottom=None):
 		for comp in s.components:
 			with ~(transform.translate(comp.position + s.case.offset_inner) *
 			       transform.rotate(comp.rotation)):
+				if s.binary and (bottom is None or bottom != comp.flipped): continue
 				if comp.flipped:
 					~transform.rotate(0, 180, 0) * metadata.color() * comp.mod_preview()
 				else:
@@ -215,9 +306,10 @@ class Case:
 		s.layer_thickness = layer_thickness
 		s.wall_roundness = wall_roundness
 		s.screw_pattern = ScrewPattern()
+		s.lid_fillet = 2
 
-	def layer(s, thickness=None):
-		l = Layer(s, thickness or s.layer_thickness)
+	def layer(s, thickness=None, binary=False):
+		l = Layer(s, thickness or s.layer_thickness, binary)
 		s.layers.append(l)
 		return l
 
@@ -231,6 +323,22 @@ class Case:
 				                      roundingSegments=180)
 			else:
 				~primitives.rect.nxy(s.size_inner + V(2, 2) * s.wall_thickness)
+
+	@dag.DAGModule
+	def mod_lid_fillet(s, flip=False):
+		with ~transform.mirror.If(flip, 0, 0, 1) * transform.translate(
+		  s.size_inner / 2) * transform.translate(z=-s.lid_fillet):
+			with ~(transform.mirrordup(1, 0, 0) * transform.translate(
+			  x=s.size_inner.x / 2 - s.lid_fillet) * operations.difference()):
+				~primitives.cuboid.nxz(s.lid_fillet, s.size_inner.y, s.lid_fillet)
+				~(transform.rotate(90, 0, 0) * primitives.cylinder(
+				  r=s.lid_fillet, h=s.size_inner.y - s.lid_fillet * 0, segments=90))
+			with ~(transform.mirrordup(0, 1, 0) * transform.translate(
+			  y=s.size_inner.y / 2 - s.lid_fillet) * operations.difference()):
+				~primitives.cuboid.nyz(s.size_inner.x, s.lid_fillet, s.lid_fillet)
+				~(transform.rotate(0, 90, 0) * primitives.cylinder(
+				  r=s.lid_fillet, h=s.size_inner.x - s.lid_fillet * 0, segments=90))
+		pass
 
 	@dag.DAGModule
 	def mod_layer_profile(s):
@@ -264,6 +372,12 @@ class Case:
 		else:
 			~s.screw_pattern.mod_frame_top(layerBottom)
 
+		if layerBottom is None:
+			~s.mod_lid_fillet(True)
+
+		if layerTop is None:
+			~transform.translate(z=height_inner) * s.mod_lid_fillet()
+
 		with operations.difference.emplace():
 			if layerTop is not None:
 				~transform.translate(z=height_inner) * layerTop.mod_cavity()
@@ -279,10 +393,22 @@ class Case:
 		for i_layer, layer in enumerate(s.layers):
 			layer.build(f"{s.ident}-layer{i_layer}")
 
-			processing.registerEntity(
-			  processing.EntityRecord(processing.part, layer.mod_plate,
-			                          f"{s.ident}-layer{i_layer}", "",
-			                          processing.part.DefaultProcess, list(), dict()))
+			if layer.binary:
+				processing.registerEntity(
+				  processing.EntityRecord(
+				    processing.part, layer.mod_plate, f"{s.ident}-layer{i_layer}-top",
+				    "", processing.part.DefaultProcess, list(), {"bottom": False}))
+				processing.registerEntity(
+				  processing.EntityRecord(processing.part, layer.mod_plate,
+				                          f"{s.ident}-layer{i_layer}-bottom", "",
+				                          processing.part.DefaultProcess, list(),
+				                          {"bottom": True}))
+			else:
+				processing.registerEntity(
+				  processing.EntityRecord(processing.part, layer.mod_plate,
+				                          f"{s.ident}-layer{i_layer}",
+				                          "", processing.part.DefaultProcess, list(),
+				                          dict()))
 
 			processing.registerEntity(
 			  processing.EntityRecord(processing.part, s.mod_frame,
@@ -331,9 +457,21 @@ class Case:
 			~transform.translate(z=z) * metadata.color() * s.mod_frame(layer0, layer)
 			z += h + explode
 
-			~transform.translate(z=z) * metadata.color() * layer.mod_plate()
-			~transform.translate(z=z) * layer.mod_preview()
-			z += layer.thickness + explode
+			if layer.binary:
+				~transform.translate(z=z) * metadata.color() * layer.mod_plate(
+				  bottom=True)
+				~transform.translate(z=z) * layer.mod_preview(bottom=True)
+				z += layer.thickness + explode
+				~transform.translate(z=z) * metadata.color() * layer.mod_plate(
+				  bottom=False)
+				~transform.translate(z=z) * layer.mod_preview(bottom=False)
+				z += layer.thickness + explode
+
+			else:
+
+				~transform.translate(z=z) * metadata.color() * layer.mod_plate()
+				~transform.translate(z=z) * layer.mod_preview()
+				z += layer.thickness + explode
 
 			layer0 = layer
 

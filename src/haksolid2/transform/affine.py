@@ -68,9 +68,9 @@ class retransform(dag.DAGLeaf):
 		return "retransform"
 
 
-translate = usability.OptionalConditionalNode(_translate, dag.DAGNode)
-scale = usability.OptionalConditionalNode(_scale, dag.DAGNode)
-rotate = usability.OptionalConditionalNode(_rotate, dag.DAGNode)
-rebase = usability.OptionalConditionalNode(_rebase, dag.DAGNode)
-mirror = usability.OptionalConditionalNode(_mirror, dag.DAGNode)
-matrix = usability.OptionalConditionalNode(_matrix, dag.DAGNode)
+translate = usability.OptionalConditionalNode(_translate, dag.DAGGroup)
+scale = usability.OptionalConditionalNode(_scale, dag.DAGGroup)
+rotate = usability.OptionalConditionalNode(_rotate, dag.DAGGroup)
+rebase = usability.OptionalConditionalNode(_rebase, dag.DAGGroup)
+mirror = usability.OptionalConditionalNode(_mirror, dag.DAGGroup)
+matrix = usability.OptionalConditionalNode(_matrix, dag.DAGGroup)

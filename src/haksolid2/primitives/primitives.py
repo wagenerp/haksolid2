@@ -92,7 +92,7 @@ class CylinderPrimitive(Primitive3D):
 		if h is None: raise ValueError("missing height")
 		r0, r1 = usability.getFlexibleDualRadius(r, d, r0, d0, r1, d1)
 
-		r= 0.05*(r0+r1 + abs(r0-r1)) # sympy-friendly max
+		r = 0.05 * (r0 + r1 + abs(r0 - r1)) # sympy-friendly max
 		extent = V(r * 2, r * 2, h)
 		s.r0 = r0
 		s.r1 = r1
@@ -110,7 +110,12 @@ class CylinderPrimitive(Primitive3D):
 
 
 class RectPrimitive(Primitive2D):
-	def __init__(s, x=None, y=None, roundingLevel=0, r=None, roundingSegments=None):
+	def __init__(s,
+	             x=None,
+	             y=None,
+	             roundingLevel=0,
+	             r=None,
+	             roundingSegments=None):
 		extent = usability.getFlexibleExtent2(x, y)
 
 		processRoundingData(s, roundingLevel, r, 1, roundingSegments)
@@ -163,6 +168,17 @@ class polygon(Primitive2D):
 		xmax = max(p.x for p in s.points)
 		ymax = max(p.y for p in s.points)
 		Primitive2D.__init__(s, V(xmax, ymax, 0))
+
+
+class polyhedron(Primitive3D):
+	def __init__(s, points, faces):
+		s.points = list(points)
+		s.faces = list(faces)
+
+		xmax = max(p.x for p in s.points)
+		ymax = max(p.y for p in s.points)
+		zmax = max(p.z for p in s.points)
+		Primitive3D.__init__(s, V(xmax, ymax, zmax))
 
 
 class PrimitiveFactory:

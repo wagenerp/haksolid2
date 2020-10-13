@@ -211,6 +211,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		elif isinstance(node, primitives.polygon):
 			s.addLeaf(f"polygon(points={scad_repr(node.points)})")
 
+		elif isinstance(node, primitives.polyhedron):
+			s.addLeaf(f"polyhedron(points={scad_repr(node.points)}, faces={scad_repr(node.faces)})")
+
 		elif isinstance(node, primitives.text):
 			code = f"text({scad_repr(node.text)}"
 			for k in ("size", "font", "halign", "valign", "spacing", "direction"):

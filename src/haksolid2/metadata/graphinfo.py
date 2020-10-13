@@ -2,6 +2,7 @@ from .. import dag
 from .. import usability
 from .. import transform, primitives, operations, usability
 from ..math import *
+from . import layers
 
 
 class DimensionVisitor(dag.DAGVisitor):
@@ -11,9 +12,13 @@ class DimensionVisitor(dag.DAGVisitor):
 		s.has3d = False
 		s.has2dTo3d = False
 		s.has3dTo2d = False
+		s.descendLayers = True
 
 	def __call__(s, node):
-		if isinstance(node, primitives.Primitive2D):
+		if isinstance(node, layers.DAGLayer):
+			return s.descendLayers
+
+		elif isinstance(node, primitives.Primitive2D):
 			s.has2d = True
 		elif isinstance(node, primitives.Primitive3D):
 			s.has3d = True

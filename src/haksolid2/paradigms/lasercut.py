@@ -4,7 +4,9 @@ from .. import operations
 from .. import processing
 from collections import namedtuple
 
-laser_params_t = namedtuple("laser_params_t", "feedrate pwm current")
+laser_params_t = namedtuple("laser_params_t",
+                            "feedrate pwm current keyvalues",
+                            defaults=(None, ))
 
 
 class LasercutProcess(processing.ProcessBase):
@@ -47,22 +49,23 @@ class LaserMaterial:
 
 
 class ConstantLaserMaterial(LaserMaterial):
-	def __init__(s, params: laser_params_t):
+	def __init__(s, feedrate, pwm, current, **kwargs):
 		LaserMaterial.__init__(s)
-		s._params = params
+		s._params = laser_params_t(feedrate, pwm, current, dict(kwargs))
 
 	def computeParams(s, p: LasercutLayer) -> laser_params_t:
 		return s._params
 
 
 class ConstantPowerLaserMaterial(LaserMaterial):
-	def __init__(s, depthMin, depthMax, feedrateFunc, current, pwm=1):
+	def __init__(s, depthMin, depthMax, feedrateFunc, current, pwm=1, **kwargs):
 		LaserMaterial.__init__(s)
 		s.depthMin = depthMin
 		s.depthMax = depthMax
 		s.feedrateFunc = feedrateFunc
 		s.current = current
 		s.pwm = pwm
+		s._keyvalues = dict(kwargs)
 
 	def computeParams(s, p: LasercutLayer) -> laser_params_t:
 
@@ -72,4 +75,5 @@ class ConstantPowerLaserMaterial(LaserMaterial):
 		if p.depth < s.depthMin:
 			raise RuntimeError(
 			  f"unachievable laser depth: {p.depth} < depthMin = {s.depthMin}")
-		return laser_params_t(s.feedrateFunc(p.depth), s.pwm, s.current)
+		return laser_params_t(s.feedrateFunc(p.depth), s.pwm, s.current,
+		                      dict(s._keyvalues))

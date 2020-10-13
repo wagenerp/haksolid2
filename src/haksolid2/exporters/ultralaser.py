@@ -6,11 +6,13 @@ from .. import paradigms
 from .. import openscad
 from .. import transform
 from ..math import *
+import shlex
 import os
 import subprocess
 from collections import namedtuple
 
-ultralaser_job_t = namedtuple("ultralaser_job_t", "T params penetrates soup")
+ultralaser_job_t = namedtuple("ultralaser_job_t",
+                              "T params penetrates soup mode")
 
 
 class Ultralaser(lasercut.LasercutProcess):
@@ -19,10 +21,15 @@ class Ultralaser(lasercut.LasercutProcess):
 	             contourDepth=None,
 	             contourSpeedFactor=0.5,
 	             horizontal=True,
+	             keyvalues=None,
 	             **kwargs):
 		lasercut.LasercutProcess.__init__(s, **kwargs)
 		s.horizontal = horizontal
 		s.material = material
+		if keyvalues is None:
+			s.keyvalues = dict()
+		else:
+			s.keyvalues = dict(keyvalues)
 
 		if contourDepth is None:
 			contourDepth = s.thickness
@@ -84,16 +91,24 @@ class Ultralaser(lasercut.LasercutProcess):
 				penetrates = layer.node.depth >= s.thickness
 				params = s.material.computeParams(layer)
 
-				jobs.append(ultralaser_job_t(T, params, penetrates, soup))
+				jobs.append(ultralaser_job_t(T, params, penetrates, soup, layer.mode))
 
 		if s.contourDepth > 0: # add contour to the list
-			subent = processing.EntityRecord(processing.EntityNode, ent.node.node, "",
-			                                 "", subproc)
-			res = processing.buildEntity(subent)
-			soup = s._extractSoup(res)
-			penetrates = s.contourDepth >= s.thickness
 
-			jobs.append(ultralaser_job_t(M(), s.contourParams, penetrates, soup))
+			dims = metadata.DimensionVisitor()
+			dims.descendLayers = False
+			ent.node.node.visitDescendants(dims)
+
+			if dims.has2d:
+				subent = processing.EntityRecord(processing.EntityNode, ent.node.node,
+				                                 "", "", subproc)
+				res = processing.buildEntity(subent)
+				soup = s._extractSoup(res)
+				penetrates = s.contourDepth >= s.thickness
+
+				jobs.append(
+				  ultralaser_job_t(M(), s.contourParams, penetrates, soup,
+				                   lasercut.LasercutLayer.TraceContour))
 		# soup = s._processLayer(M(), ent.node, subproc)
 		# jobs.append((M(), ent.node, soup))
 
@@ -123,21 +138,37 @@ class Ultralaser(lasercut.LasercutProcess):
 
 		i_process = 0
 
+		if s.keyvalues is not None:
+			for k, v in s.keyvalues.items():
+				f.write(f"kv {shlex.quote(k)} {shlex.quote(str(v))}\n".encode())
+
 		for job in jobs:
 			i_process += 1
 
-			f.write(
-			  f"define_process custom{i_process} feedrate {job.params.feedrate} power {job.params.pwm} {'penetrates' if job.penetrates else ''} end\n"
-			  .encode())
+			process_str = (
+			  f"define_process custom{i_process} feedrate {job.params.feedrate} power {job.params.pwm} {'penetrates' if job.penetrates else ''} "
+			)
+
+			if job.params.keyvalues is not None:
+				for k, v in job.params.keyvalues.items():
+					process_str += f" {shlex.quote(k)} {shlex.quote(str(v))}"
+			process_str += " end\n"
+
+			f.write(process_str.encode())
 			f.write(f"process custom{i_process}\n".encode())
 
 			for face in job.soup.faces:
 				if len(face.vertices) < 2:
 					continue
-				# todo: process filling jobs
+
+				verb = "close"
+				if job.mode == lasercut.LasercutLayer.TraceContour:
+					verb = "close"
+				elif job.mode == lasercut.LasercutLayer.FillZigZag:
+					verb = "fill"
 				f.write(
-				  ("segment %s close\n" % " ".join(gen_point(v)
-				                                   for v in face.vertices)).encode())
+				  ("segment %s %s\n" % (" ".join(gen_point(v) for v in face.vertices),
+				   verb)).encode())
 
 		f.flush()
 		f.close()

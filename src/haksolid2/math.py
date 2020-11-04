@@ -1,7 +1,7 @@
 import re
 import numpy
 from collections import Iterable, namedtuple
-from math import cos, sin, pi, asin, acos
+from sympy import cos, sin, pi, asin, acos
 import shlex
 import sympy
 

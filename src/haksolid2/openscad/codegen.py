@@ -8,6 +8,41 @@ import math
 from collections import Iterable
 
 
+class OpenSCADSympyPrinter(sympy.printing.StrPrinter):
+
+	FunctionMap = {
+	  'acos': '_rad_acos',
+	  'asin': '_rad_asin',
+	  'atan': '_rad_atan',
+	  'ceiling': 'ceil',
+	  'cos': '_rad_cos',
+	  'floor': 'floor',
+	  'log': 'log',
+	  'ln': 'ln',
+	  'log10': 'log',
+	  'sin': '_rad_sin',
+	  'Sqrt': 'sqrt',
+	  'tan': '_rad_tan',
+	}
+
+	def __init__(s, settings={}):
+		sympy.printing.StrPrinter.__init__(s, settings)
+
+	def _print_Pi(s, expr):
+		return "PI"
+
+	def _print_Function(s, expr):
+
+		ident = expr.func.__name__
+		if ident in s.FunctionMap:
+			ident = s.FunctionMap[ident]
+
+		return "%s(%s)" % (ident, ", ".join(s._print(arg) for arg in expr.args))
+
+
+sympyPrinter = OpenSCADSympyPrinter()
+
+
 def scad_repr(data):
 	"""Returns a piece of OpenSCAD code representing a given variable, simmilar to python's 'repr' call. Supports nonetype, boolean, string, numbers and iterables (being translated to list literals)."""
 	if data is None:
@@ -23,7 +58,7 @@ def scad_repr(data):
 		elif math.isinf(data): return "(1e200*1e200)"
 		else: return repr(data)
 	elif isinstance(data, (sympy.core.Expr, sympy.core.relational.Relational)):
-		return str(data)
+		return sympyPrinter.doprint(data)
 	elif type(data) == str:
 		data_enc = "".join(v if v != '"' else '\\"' for v in data)
 		return '"%s"' % data
@@ -212,7 +247,9 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			s.addLeaf(f"polygon(points={scad_repr(node.points)})")
 
 		elif isinstance(node, primitives.polyhedron):
-			s.addLeaf(f"polyhedron(points={scad_repr(node.points)}, faces={scad_repr(node.faces)})")
+			s.addLeaf(
+			  f"polyhedron(points={scad_repr(node.points)}, faces={scad_repr(node.faces)})"
+			)
 
 		elif isinstance(node, primitives.text):
 			code = f"text({scad_repr(node.text)}"
@@ -399,4 +436,15 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			else:
 				varcode += f"{v.symbol} = {v.ident};\n"
 
-		s.code = varcode + s.code
+		gluecode = """
+			function _rad_asin(x) = asin(x) * PI/180; \n
+			function _rad_acos(x) = acos(x) * PI/180; \n
+			function _rad_atan(x) = atan(x) * PI/180; \n
+			function _rad_sin(x) = sin(x*180/PI); \n
+			function _rad_cos(x) = cos(x*180/PI); \n
+			function _rad_tan(x) = tan(x*180/PI); \n
+		
+		
+		"""
+
+		s.code = varcode + gluecode + s.code

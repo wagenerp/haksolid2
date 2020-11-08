@@ -5,7 +5,11 @@ import warnings
 import numbers
 import numpy
 import math
-from collections import Iterable
+from collections import Iterable, namedtuple
+
+layer_record_t = namedtuple("layer_record_t", "ident name description")
+variable_record_t = namedtuple(
+  "variable_record_t", "ident group description domain symbol default isBool")
 
 
 class OpenSCADSympyPrinter(sympy.printing.StrPrinter):
@@ -80,6 +84,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		s.code = ""
 		s.variables = dict()
 		s.variable_list = list()
+		s.layers = set()
 
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
@@ -339,7 +344,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			    (s.layerFilter is None or not s.layerFilter(node))):
 				return False
 			color = list(node.color) + [node.alpha]
-			s.addNode(f"color({scad_repr(color)})")
+			s.layers.add(layer_record_t(node.ident(), str(node), ""))
+			s.addNode(f"if (_display_{node.ident()}) color({scad_repr(color)})")
 
 		elif s.processPreview and isinstance(node, processing.EntityNode):
 			if isinstance(node.process, paradigms.lasercut.LasercutProcess):
@@ -390,10 +396,34 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			s.addNode("union()")
 		elif isinstance(node, metadata.variable):
 			if node.ident not in s.variables:
-				s.variables[node.ident] = node
-				s.variable_list.append(node)
+				record = variable_record_t(node.ident, node.group, node.description,
+				                           node.domain, node.symbol, node.default,
+				                           node.isBool)
+				s.variables[node.ident] = len(s.variable_list)
+
+				# variable_record_t = namedtuple("variable_record_t","ident group description domain symbol")
+				s.variable_list.append(record)
 			else:
-				raise Exception(f"variable redeclared: {node.ident}")
+
+				def update(old, new):
+					if old is None: return new
+					if new is None: return old
+					if old != new:
+						raise Exception(
+						  f"variable {node.ident} redeclared as something else")
+					return old
+
+				i_variable = s.variables[node.ident]
+				_, group, description, domain, symbol, default, isBool = (
+				  s.variable_list[i_variable])
+
+				record = variable_record_t(node.ident, update(group, node.group),
+				                           update(description, node.description),
+				                           update(domain, node.domain),
+				                           update(symbol, node.symbol),
+				                           update(default, node.default),
+				                           update(isBool, node.isBool))
+				s.variable_list[i_variable] = record
 
 		elif isinstance(node, metadata.conditional):
 			s.addNode(f"if ({scad_repr(node.expr)})")
@@ -417,10 +447,18 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 
 		current_group = None
 
+		if len(s.layers) > 0:
+			current_group = "layers"
+			varcode += "/* [layers] */\n"
+			for layer in sorted(s.layers,
+			                    key=lambda v: (v.name, v.ident, v.description)):
+				varcode += f"// {layer.description}\n"
+				varcode += f"_display_{layer.ident} = true;\n"
+
 		for _, v in sorted(enumerate(s.variable_list),
 		                   key=lambda v: (v[1].group or '', v[0])):
 			if v.group != current_group:
-				current_group = v.group
+				current_group = v.group or "Parameters"
 				varcode += f"/* [{current_group}] */\n"
 
 			if v.description is not None:

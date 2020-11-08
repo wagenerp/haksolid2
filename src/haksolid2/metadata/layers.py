@@ -3,12 +3,19 @@ from ..math import *
 from .. import usability
 from .. import metadata
 
+
 class DAGLayer(dag.DAGGroup):
 	color = V(1, 1, 1)
 	alpha = 1
 
 	def __init__(s):
 		dag.DAGGroup.__init__(s)
+
+	def ident(s):
+		def cts(v):
+			return "%.2x" % (min(255, max(0, int(v * 255))))
+
+		return f"{s.__class__.__name__}_{cts(s.color.x)}{cts(s.color.y)}{cts(s.color.z)}{cts(s.alpha)}"
 
 	def __str__(s):
 		return f"{s.__class__.__name__}({s.color} {s.alpha*100}%)"

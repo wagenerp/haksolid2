@@ -269,6 +269,12 @@ cylinder = RoundedBoxAnchorExplicitPattern(PrimitiveFactory(CylinderPrimitive))
 rect = RoundedBoxAnchorPattern(PrimitiveFactory(RectPrimitive))
 circle = RoundedBoxAnchorExplicitPattern(PrimitiveFactory(CirclePrimitive))
 
+class geometryImport(Primitive3D):
+	def __init__(s, filename):
+		s.filename = filename
+
+		Primitive3D.__init__(s, V(1,1,1))
+
 
 class text(Primitive2D):
 	def __init__(s,

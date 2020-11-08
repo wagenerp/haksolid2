@@ -262,6 +262,10 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			code += ")"
 			s.addLeaf(code)
 
+		elif isinstance(node, primitives.geometryImport):
+			code = f"import(\"{node.filename}\")"
+			s.addLeaf(code)
+
 		elif isinstance(node, operations.difference):
 			s.addNode(f"difference()")
 		elif isinstance(node, operations.intersection):

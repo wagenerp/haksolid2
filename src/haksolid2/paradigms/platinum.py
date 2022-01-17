@@ -10,7 +10,7 @@ from .. import usability
 from .. import processing
 import hashlib
 
-plate_t = namedtuple("plate_t", "core diff plane thickness name aabb")
+plate_t = namedtuple("plate_t", "core diff plane flat thickness name aabb")
 
 
 class PlateWrapper:
@@ -157,7 +157,11 @@ class Platinum:
 			    for k in Platinum.EdgeConfig.Keys
 			  })
 
-	def __init__(s, default_thickness=4, beam_width=0.2, edgeConfig=None):
+	def __init__(s,
+	             default_thickness=4,
+	             beam_width=0.2,
+	             edgeConfig=None,
+	             process=None):
 		s._global_hole = dag.DAGGroup()
 		s._global_envelope = dag.DAGGroup()
 		s._default_thickness = default_thickness
@@ -173,6 +177,7 @@ class Platinum:
 
 		s._plates = list()
 		s._edgeConfigOverrides = dict()
+		s._process = process
 
 	def configureEdge(s, plate1, plate2, cfg):
 		key = edge_key(plate1, plate2)
@@ -243,7 +248,16 @@ class Platinum:
 		 primitives.polygon([x1, gh], [x1, thickness - gh], [x2, thickness - gh],
 		                    [x2, gh]))
 
-	def plate(s, name=None, thickness=None, process=None, aabb=None):
+	def plate(s,
+	          name=None,
+	          ex=None,
+	          ey=None,
+	          ez=None,
+	          p=None,
+	          thickness=None,
+	          process=None,
+	          aabb=None):
+		if process is None: process = s._process
 		thickness = thickness or s._default_thickness
 
 		core = dag.DAGGroup()
@@ -251,18 +265,21 @@ class Platinum:
 		diff = operations.difference()
 		diff * core
 
-		plane = operations.intersection()
+		flat = operations.intersection()
+		plane = flat
 		if name is not None:
 			plane = processing.part(name=name, process=process) * plane
 		with plane:
 			~diff
 
-		plate = plate_t(core, diff, plane, thickness, name, aabb)
+		plate = plate_t(core, diff, plane, flat, thickness, name, aabb)
 		s._plates.append(plate)
 
 		preview = metadata.color(
 		  a=0.4) * operations.linear_extrude.n(thickness) * plane
-		return dag.DAGNodeConcatenator(preview, core)
+
+		res = dag.DAGNodeConcatenator(preview, core)
+		return transform.rebase(p, ex, ey, ez) * res
 
 	def _retrieve_matrix(s, p):
 		v = usability.AllAbsTransformsVisitor()
@@ -374,7 +391,6 @@ class Platinum:
 				m = s._retrieve_matrix(p1) @ M.Translation(V(0, 0, -p1.thickness * 0.5))
 
 				with p1.diff:
-					# ~primitives.circle(10)
 
 					with ~operations.projection() * operations.intersection():
 						~transform.matrix(m.inverse) * s._global_hole
@@ -384,7 +400,6 @@ class Platinum:
 				m = s._retrieve_matrix(p1) @ M.Translation(V(0, 0, -p1.thickness * 0.5))
 
 				with p1.plane:
-					# ~primitives.circle(10)
 
 					with ~operations.projection() * operations.intersection():
 						~transform.matrix(m.inverse) * s._global_envelope
@@ -407,33 +422,9 @@ class Platinum:
 
 	@dag.DAGModule
 	def _mod_plate(s, plate):
-		with transform.matrix(s._retrieve_matrix(plate)):
-			operations.linear_extrude(plate.thickness) * plate.plane.instance()
-			with hole():
-				for layer, root in plate.plane.layers(yield_roots=True):
-					if isinstance(layer, engrave_layer_t):
-						with translate(z=plate.thickness *
-						               (1.0 - layer.depth)) * operations.linear_extrude(
-						                 plate.thickness * layer.depth + 1, convexity=10):
-							for child in root._children:
-								child.instance()
-					elif isinstance(layer, mark_layer_t):
-						with translate(z=plate.thickness *
-						               (1.0 - layer.depth)) * operations.linear_extrude(
-						                 plate.thickness * layer.depth + 1, convexity=10):
-							for child in root._children:
-								with difference():
-									offset(r=s._beam_width / 2) * child.instance()
-									offset(r=-s._beam_width / 2) * child.instance()
-					elif isinstance(layer, laser_layer_t):
-						if layer.ident == "mark":
-							with translate(z=plate.thickness *
-							               (1.0 - 0.3)) * operations.linear_extrude(
-							                 plate.thickness * 0.3 + 1, convexity=10):
-								for child in root._children:
-									with difference():
-										offset(r=s._beam_width / 2) * child.instance()
-										offset(r=-s._beam_width / 2) * child.instance()
+		with ~transform.matrix(s._retrieve_matrix(plate)):
+
+			~operations.linear_extrude.c(plate.thickness) * plate.flat
 
 	@dag.DAGModule
 	def mod_plate(s, ident):
@@ -444,13 +435,10 @@ class Platinum:
 	@dag.DAGModule
 	def mod_assembly(s, explode=0):
 		for plate in s._plates:
-			# if explode > 0:
-			# 	box = s._retrieve_aabb(plate)
-			# 	m = s._retrieve_matrix(plate)
-			# 	anchor = (
-			# 	  m @ V(box.center.x, box.center.y, plate.thickness * 0.5, 1)).xyz
-			# 	explosion = anchor * explode
-			# else:
-			explosion = [0, 0, 0]
+
+			box = s._retrieve_aabb(plate)
+			m = s._retrieve_matrix(plate)
+			anchor = (m @ V(box.center.x, box.center.y, plate.thickness * 0.5, 1)).xyz
+			explosion = anchor * explode
 			with ~metadata.color() * transform.translate(explosion):
 				~s._mod_plate(plate)

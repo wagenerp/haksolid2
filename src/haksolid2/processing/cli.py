@@ -1,5 +1,5 @@
 import cli
-from . import entities
+from . import entities, customizer
 import re
 import sys
 import pyinotify
@@ -20,6 +20,9 @@ class entname_t:
 			raise TypeError(f"not a valid filter: {v} ({e})")
 
 
+vBuildCustomizer = cli.Variable(
+  str, None, "C", "build-customizer",
+  "Name of a customizer file from which multiple variants are built")
 fBuildAll = cli.Flag("B", "build-all", "build all parts")
 lBuildFilters = cli.VariableList(
   entname_t, "b", "build",
@@ -36,6 +39,7 @@ fWatch = cli.Flag(
   "keep running in the background and re-execute when files changed")
 
 partsToBuild = set()
+presetsToBuild = set()
 arrangementToBuild = None
 
 
@@ -79,7 +83,7 @@ def help_list_parts(f):
 
 @cli.check
 def check_inputs():
-	global partsToBuild, arrangementToBuild
+	global partsToBuild, arrangementToBuild, presetsToBuild
 
 	if True: # extract singular name of an arrangement to build
 		if vBuildArrangement.value is not None:
@@ -107,6 +111,14 @@ def check_inputs():
 				partsToBuildDict[part.name] = part
 		partsToBuild = list(partsToBuildDict.values())
 
+	if True: # load customizer presets to build
+		if vBuildCustomizer.value is not None:
+			presetFile = customizer.PresetFile(vBuildCustomizer.value)
+			for k, v in presetFile.presets.items():
+				presetsToBuild.add((presetFile, k))
+		else:
+			presetsToBuild.add((None, None))
+
 	if len(partsToBuild) < 1 and arrangementToBuild is None:
 		raise cli.clex("nothing to do")
 
@@ -114,7 +126,7 @@ def check_inputs():
 def climain():
 	cli.process()
 
-	global partsToBuild, arrangementToBuild
+	global partsToBuild, arrangementToBuild, presetsToBuild
 
 	viewer = None
 
@@ -123,8 +135,13 @@ def climain():
 		if fViewArrangement.value:
 			viewer = arrangementToBuild.process.watch(res)
 
-	for part in partsToBuild:
-		entities.buildEntity(part)
+	for presetFile, presetName in presetsToBuild:
+		if presetFile is not None:
+			presetFile.applyPreset(presetName)
+		for part in partsToBuild:
+			if presetName is not None:
+				part = part.namedCopy(f"{part.name}-{presetName}")
+			entities.buildEntity(part)
 
 	if fWatch.value:
 

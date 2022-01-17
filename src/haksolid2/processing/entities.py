@@ -60,6 +60,10 @@ class EntityRecord:
 			s._node = s._subject(*s._args, **s._kwargs)
 		return s._node
 
+	def namedCopy(s, name):
+		return EntityRecord(s._type, s._subject, name, s._description, s._process,
+		                    list(s._args), dict(s._kwargs))
+
 
 class EntityDefinitionWarning(errors.HaksolidWarning):
 	pass

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type":"object",
+  "properties": {
+    "fileFormatVersion" : {
+      "type" : "string",
+      "const" : "1"
+    },
+    "parameterSets":{
+      "type":"object",
+      "additionalProperties": {
+        "type":"object",
+        "additionalProperties": {
+          "type":"string"
+        }
+      }
+    }
+  }
+}

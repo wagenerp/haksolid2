@@ -1,6 +1,8 @@
 from .. import dag
 from ..math import *
 
+_GlobalDefaults = dict()
+
 
 class variable(dag.DAGLeaf):
 	def __init__(s,
@@ -11,7 +13,7 @@ class variable(dag.DAGLeaf):
 	             group: str = None):
 
 		s.ident = ident
-		s.default = default
+		s._default = default
 		s.description = description
 		s.domain = domain
 		s.group = group
@@ -20,6 +22,20 @@ class variable(dag.DAGLeaf):
 		# sympy.Symbol.__init__(s,ident)
 		dag.DAGLeaf.__init__(s)
 
+
+
+	@classmethod
+	def SetGlobalDefault(cls, key: str, value: any):
+		_GlobalDefaults[key] = value
+
+	@property
+	def default(s):
+		if s.ident in _GlobalDefaults:
+			return type(s._default)(_GlobalDefaults[s.ident])
+		else:
+			return s._default
+	
+	
 	def __str__(s):
 		return f"variable({s.ident})"
 

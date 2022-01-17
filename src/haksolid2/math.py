@@ -1,6 +1,7 @@
 import re
 import numpy
-from collections import Iterable, namedtuple
+from collections import namedtuple
+from collections.abc import Iterable
 from sympy import cos, sin, pi, asin, acos
 import shlex
 import sympy
@@ -504,20 +505,35 @@ class FaceSoup:
 					raise SyntaxError("vertex or endloop expected")
 
 	def load_svg_loops(s, code):
-		for stmt in re.findall("<path d=\"(.*?)\".*?/>", code, re.DOTALL):
+		for stmt in re.findall("<path\\s+d=\"(.*?)\".*?/>", code, re.DOTALL):
 			vertices = list()
 			p = V(0, 0)
-			for movop, x, y, endop in re.findall(
-			  "([ML])[ \\t]+([0-9.-]+),([0-9.-]+)|(z)", stmt):
+			for movop, coords, endop in re.findall(
+			  "([MLml])((?:[ \\t]+(?:[0-9.e-]+),(?:[0-9.e-]+))+)|(z)", stmt):
+
 				if endop == "z":
 					s.faces.append(face_t(V(0, 0, 1), vertices))
 					vertices = list()
-				elif movop == "M":
-					p = V(float(x), -float(y))
-				elif movop == "L":
-					if len(vertices) < 1: vertices.append(p)
-					p = V(float(x), -float(y))
-					vertices.append(p)
+				elif movop != "":
+					for ixy, (x, y) in enumerate(
+					  re.findall("([0-9.e-]+),([0-9.e-]+)", coords)):
+
+						if movop == "M":
+							p = V(float(x), -float(y))
+						elif movop == "m":
+							if (ixy > 0) and (len(vertices) < 1): vertices.append(p)
+							p = p + V(float(x), -float(y))
+							if (ixy > 0):
+								vertices.append(p)
+
+						elif movop == "L":
+							if len(vertices) < 1: vertices.append(p)
+							p = V(float(x), -float(y))
+							vertices.append(p)
+						elif movop == "l":
+							if len(vertices) < 1: vertices.append(p)
+							p = p + V(float(x), -float(y))
+							vertices.append(p)
 
 
 class aabb_t:

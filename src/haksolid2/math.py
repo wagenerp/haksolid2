@@ -4,6 +4,24 @@ from collections import Iterable, namedtuple
 from sympy import cos, sin, pi, asin, acos
 import shlex
 import sympy
+import math
+
+
+def isSymbolic(v):
+	if isinstance(v, sympy.core.Expr):
+		return True
+	elif isinstance(v, (M, V)):
+		return v.isSymbolic
+	return False
+
+
+def cosSin(a, deg=True):
+	if isSymbolic(a):
+		a = a * sympy.pi / 180
+		return sympy.cos(a), sympy.sin(a)
+	else:
+		a = a * math.pi / 180
+		return math.cos(a), math.sin(a)
 
 
 class V(numpy.ndarray):
@@ -36,6 +54,13 @@ class V(numpy.ndarray):
 		                             shape=(len(args), ),
 		                             buffer=numpy.array([float(v) for v in args]),
 		                             dtype=float)
+
+	@property
+	def isSymbolic(s):
+		for v in s:
+			if isSymbolic(v):
+				return True
+		return False
 
 	@classmethod
 	def Cylinder(cls, phi, r=1, z=0):
@@ -222,31 +247,38 @@ class M(numpy.ndarray):
 			return numpy.ndarray.__getattribute__(s, attr)
 
 	@property
+	def isSymbolic(s):
+		for row in s:
+			for cell in row:
+				if isSymbolic(cell):
+					return True
+		return False
+
+	@property
 	def inverse(s):
+		if s.isSymbolic:
+			raise NotImplementedError("inv for symbolic matrix is unsupported")
 		return numpy.linalg.inv(s)
 
 	@classmethod
 	def RotationX(cls, a):
-		c = cos(a * pi / 180.0)
-		s = sin(a * pi / 180.0)
+		c, s = cosSin(a, deg=True)
+
 		return M([1, 0, 0, 0], [0, c, -s, 0], [0, s, c, 0], [0, 0, 0, 1])
 
 	@classmethod
 	def RotationY(cls, a):
-		c = cos(a * pi / 180.0)
-		s = sin(a * pi / 180.0)
+		c, s = cosSin(a, deg=True)
 		return M([c, 0, s, 0], [0, 1, 0, 0], [-s, 0, c, 0], [0, 0, 0, 1])
 
 	@classmethod
 	def RotationZ(cls, a):
-		c = cos(a * pi / 180.0)
-		s = sin(a * pi / 180.0)
+		c, s = cosSin(a, deg=True)
 		return M([c, -s, 0, 0], [s, c, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1])
 
 	@classmethod
 	def RotationV(cls, a, w):
-		c = cos(a * pi / 180.0)
-		s = sin(a * pi / 180.0)
+		c, s = cosSin(a, deg=True)
 		x = w.x
 		y = w.y
 		z = w.z
@@ -601,3 +633,8 @@ class aabb_t:
 		if s.empty or b.empty: return aabb_t.Empty()
 		return aabb_t(V(max(pair) for pair in zip(s.min, b.min)),
 		              V(min(pair) for pair in zip(s.max, b.max)))
+
+
+EX = V(1, 0, 0)
+EY = V(0, 1, 0)
+EZ = V(0, 0, 1)

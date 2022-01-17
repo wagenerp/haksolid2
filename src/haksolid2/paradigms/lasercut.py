@@ -22,25 +22,51 @@ class LasercutLayer(metadata.SubprocessLayer):
 	TraceContour = "trace.contour"
 	FillZigZag = "fill.zigZag"
 
-	def __init__(s, depth, mode=TraceContour, speedFactor=0.5):
+	def __init__(s,
+	             depth,
+	             mode=TraceContour,
+	             speedFactor=0.5,
+	             feedrateOverride=None,
+	             pwmOverride=None,
+	             currentOverride=None):
 		metadata.SubprocessLayer.__init__(s)
 		s.depth = depth
 		s.mode = mode
 		s.speedFactor = speedFactor
+		s.feedrateOverride = feedrateOverride
+		s.pwmOverride = pwmOverride
+		s.currentOverride = currentOverride
 
 	def __str__(s):
 		return f"LasercutLaser({s.mode} {s.depth} {s.speedFactor*100}%)"
 
+	def overrideParams(s, p0: laser_params_t):
+		return laser_params_t(
+		  s.feedrateOverride if s.feedrateOverride is not None else p0.feedrate,
+		  s.pwmOverride if s.pwmOverride is not None else p0.pwm,
+		  s.currentOverride if s.currentOverride is not None else p0.current,
+		  p0.keyvalues)
+
 
 @dag.DAGModule
-def engrave(depth, speedFactor=0.5):
-	~LasercutLayer(depth, LasercutLayer.FillZigZag, speedFactor) * dag.DAGAnchor()
+def engrave(depth,
+            speedFactor=0.5,
+            feedrateOverride=None,
+            pwmOverride=None,
+            currentOverride=None):
+	~LasercutLayer(depth, LasercutLayer.FillZigZag, speedFactor, feedrateOverride,
+	               pwmOverride, currentOverride) * dag.DAGAnchor()
 
 
 @dag.DAGModule
-def trace(depth, speedFactor=0.5):
-	~LasercutLayer(depth, LasercutLayer.TraceContour,
-	               speedFactor) * dag.DAGAnchor()
+def trace(depth,
+          speedFactor=0.5,
+          feedrateOverride=None,
+          pwmOverride=None,
+          currentOverride=None):
+	~LasercutLayer(depth, LasercutLayer.TraceContour, speedFactor,
+	               feedrateOverride, pwmOverride,
+	               currentOverride) * dag.DAGAnchor()
 
 
 class LaserMaterial:
@@ -54,7 +80,7 @@ class ConstantLaserMaterial(LaserMaterial):
 		s._params = laser_params_t(feedrate, pwm, current, dict(kwargs))
 
 	def computeParams(s, p: LasercutLayer) -> laser_params_t:
-		return s._params
+		return p.overrideParams(s._params)
 
 
 class ConstantPowerLaserMaterial(LaserMaterial):
@@ -75,5 +101,6 @@ class ConstantPowerLaserMaterial(LaserMaterial):
 		if p.depth < s.depthMin:
 			raise RuntimeError(
 			  f"unachievable laser depth: {p.depth} < depthMin = {s.depthMin}")
-		return laser_params_t(s.feedrateFunc(p.depth), s.pwm, s.current,
-		                      dict(s._keyvalues))
+		return p.overrideParams(
+		  laser_params_t(s.feedrateFunc(p.depth), s.pwm, s.current,
+		                 dict(s._keyvalues)))

@@ -43,6 +43,10 @@ class OpenSCADSympyPrinter(sympy.printing.StrPrinter):
 
 		return "%s(%s)" % (ident, ", ".join(s._print(arg) for arg in expr.args))
 
+	def _print_Pow(s, expr, rational=False):
+
+		return "pow(%s,%s)" % (s._print(expr.base), s._print(expr.exp))
+
 
 sympyPrinter = OpenSCADSympyPrinter()
 
@@ -359,6 +363,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 					sub = OpenSCADcodeGen(layerFilter=metadata.ClassLayerFilter(
 					  paradigms.lasercut.LasercutLayer))
 					child.visitDescendants(sub)
+					for layer in sub.layers:
+						s.layers.add(layer)
 					layer_code = None
 					if child.mode == paradigms.lasercut.LasercutLayer.TraceContour:
 						layer_code = f"""

@@ -3,6 +3,7 @@ from .. import usability
 from .. import transform, primitives, operations, usability
 from ..math import *
 from . import layers
+import os
 
 
 class DimensionVisitor(dag.DAGVisitor):
@@ -17,6 +18,11 @@ class DimensionVisitor(dag.DAGVisitor):
 	def __call__(s, node):
 		if isinstance(node, layers.DAGLayer):
 			return s.descendLayers
+
+		elif isinstance(node, primitives.geometryImport):
+			ext = os.path.splitext(node.filename)[1].lower()
+			s.has2d = ext in {".svg"}
+			s.has3d = ext in {".stl"}
 
 		elif isinstance(node, primitives.Primitive2D):
 			s.has2d = True
@@ -130,7 +136,7 @@ class BoundingBoxVisitor(usability.TransformVisitor):
 			res.max += V(node.offset, node.offset, 0)
 			return res
 		elif isinstance(node, operations.Hull):
-			return sum(children, aabb_t.Empty()) * node.matrix
+			return sum(children, aabb_t.Empty())
 
 		elif isinstance(node, operations.LinearExtrude):
 

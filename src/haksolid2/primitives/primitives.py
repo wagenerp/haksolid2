@@ -164,9 +164,12 @@ class polygon(Primitive2D):
 				s.points.append(V(p[0], p[1]))
 		else:
 			s.points = list(V(p[0], p[1]) for p in points)
-
-		xmax = max(p.x for p in s.points)
-		ymax = max(p.y for p in s.points)
+		try:
+			xmax = max(p.x for p in s.points)
+			ymax = max(p.y for p in s.points)
+		except TypeError:
+			xmax = 1
+			ymax = 1
 		Primitive2D.__init__(s, V(xmax, ymax, 0))
 
 
@@ -269,11 +272,12 @@ cylinder = RoundedBoxAnchorExplicitPattern(PrimitiveFactory(CylinderPrimitive))
 rect = RoundedBoxAnchorPattern(PrimitiveFactory(RectPrimitive))
 circle = RoundedBoxAnchorExplicitPattern(PrimitiveFactory(CirclePrimitive))
 
+
 class geometryImport(Primitive3D):
 	def __init__(s, filename):
 		s.filename = filename
 
-		Primitive3D.__init__(s, V(1,1,1))
+		Primitive3D.__init__(s, V(1, 1, 1))
 
 
 class text(Primitive2D):

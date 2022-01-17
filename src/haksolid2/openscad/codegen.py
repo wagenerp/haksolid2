@@ -411,7 +411,6 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 			newroot.visitDescendants(vdim)
 			is3d = vdim.has3d or vdim.empty
 
-			print("cache hint node")
 			sub = s.clone()
 			sub.useRawCache = False
 			newroot.visitDescendants(sub)
@@ -430,9 +429,6 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				                           rawCache=True,
 				                           decode=True,
 				                           referenceCode=code_nocache)
-				print("early cache miss")
-			else:
-				print("early cache hit")
 
 			s.code += "{"
 			if is3d:

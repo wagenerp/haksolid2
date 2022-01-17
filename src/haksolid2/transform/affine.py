@@ -36,15 +36,18 @@ def _rotate(a=0, b=None, c=None):
 		return AffineTransform(M.Rotation((a, b or 0, c or 0)))
 
 
-def _rebase(p=None, ex=None, ey=None, ez=None, angs=None):
-	return AffineTransform(M.Transform(p, ex, ey, ez, angs))
+def _rebase(p=None, ex=None, ey=None, ez=None, angs=None, inverse=False):
+	if inverse:
+		return AffineTransform(M.Transform(p, ex, ey, ez, angs).inverse)
+	else:
+		return AffineTransform(M.Transform(p, ex, ey, ez, angs))
 
 
 def _mirror(x=None, y=None, z=None):
 
 	axis = usability.getFlexibleAxis3(x, y, z)
 
-	return AffineTransform(M.Reflection(axis))
+	return AffineTransform(M.Reflection(axis.normal))
 
 
 def _matrix(m: M):

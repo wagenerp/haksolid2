@@ -5,12 +5,15 @@ from .. import metadata
 from . import codegen
 from ..math import *
 import warnings
+import time
 
 import os
 import subprocess
 
 import tempfile
 import shutil
+import pathlib
+from .cache import SCADCache, DisabledSCADCache, DirectorySCADCache, addOpenSCADCacheArguments, RenderSCADCode
 
 
 class OpenSCADSource(processing.ProcessBase):
@@ -20,6 +23,7 @@ class OpenSCADSource(processing.ProcessBase):
 	             processPreview=False,
 	             useSegmentCount=True,
 	             defaultSegments=None,
+	             useCache=None,
 	             *args,
 	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
@@ -28,6 +32,7 @@ class OpenSCADSource(processing.ProcessBase):
 		s.useClangFormat = useClangFormat
 		s.useSegmentCount = useSegmentCount
 		s.defaultSegments = None
+		s.useCache = useCache
 
 	def __call__(s, ent: processing.EntityRecord):
 
@@ -81,7 +86,9 @@ class OpenSCADSource(processing.ProcessBase):
 		if fe.lower() != ".scad":
 			raise ValueError(f"not a scad result: {res}")
 
-		viewer_process = subprocess.Popen(["openscad", fn])
+		s.useCache, cmdline = addOpenSCADCacheArguments(["openscad", fn],
+		                                                s.useCache)
+		viewer_process = subprocess.Popen(cmdline)
 		return processing.SubprocessResultViewer(viewer_process)
 
 
@@ -95,6 +102,8 @@ class OpenSCADBuild(processing.ProcessBase):
 	             outputFormat=None,
 	             useSegmentCount=True,
 	             defaultSegments=None,
+	             useCache=None,
+	             rawCache=False,
 	             *args,
 	             **kwargs):
 		processing.ProcessBase.__init__(s, *args, **kwargs)
@@ -106,6 +115,34 @@ class OpenSCADBuild(processing.ProcessBase):
 		s.outputFormat = outputFormat
 		s.useSegmentCount = useSegmentCount
 		s.defaultSegments = None
+		s.useCache = useCache
+		s.rawCache = rawCache
+
+	@classmethod
+	def RenderModule(_, m, silentFail=False, **kwargs):
+		subproc = OpenSCADBuild(outputFile=False, outputGeometry=True, **kwargs)
+		ent = processing.EntityNode(subproc)
+		ent * m
+		subent = processing.EntityRecord(processing.EntityNode, ent, "", "",
+		                                 subproc)
+
+		try:
+			res = processing.buildEntity(subent)
+		except RuntimeError:
+			if silentFail: return FaceSoup()
+			raise
+
+		if not "geometry" in res.data:
+			if silentFail: return FaceSoup()
+			raise RuntimeError("error retrieving geometry for lasercut layer")
+
+		soup = res.data["geometry"]
+
+		if not isinstance(soup, FaceSoup):
+			if silentFail: return FaceSoup()
+			raise RuntimeError("unexpected geometry data type")
+
+		return soup
 
 	def __call__(s, ent: processing.EntityRecord):
 
@@ -119,6 +156,24 @@ class OpenSCADBuild(processing.ProcessBase):
 
 		vdim = metadata.DimensionVisitor()
 		ent.node.visitDescendants(vdim)
+
+		code = ""
+		if s.defaultSegments is not None:
+			code += (f"$fn={codegen.scad_repr(s.defaultSegments)};")
+		code += (vcodegen.code)
+
+		raw = RenderSCADCode(code,
+		                     vdim.has3d or vdim.empty,
+		                     rawCache=s.rawCache,
+		                     useCache=s.useCache,
+		                     decode=s.outputGeometry,
+		                     outputFormat=s.outputFormat)
+
+		if s.outputGeometry:
+			raw_data, res.data["geometry"] = raw
+		else:
+			raw_data = raw
+
 		if s.outputFormat is not None:
 			extension = s.outputFormat
 		elif vdim.has3d or vdim.empty:
@@ -131,45 +186,14 @@ class OpenSCADBuild(processing.ProcessBase):
 		else:
 			fn_out = "out" + extension
 
-		fn_tmp = tempfile.mkdtemp()
-		cwd = os.getcwd()
-		try:
-			os.chdir(fn_tmp)
-			with open("code.scad", "w") as f:
-				if s.defaultSegments is not None:
-					f.write(f"$fn={codegen.scad_repr(s.defaultSegments)};")
-				f.write(vcodegen.code)
+		if s.outputFile:
+			with open(fn_out, "wb") as f:
+				f.write(raw_data)
+		if s.outputRaw:
+			res.data["raw"] = raw_data
 
-			p = subprocess.Popen(["openscad", "-o", fn_out, "code.scad"],
-			                     stdout=subprocess.PIPE,
-			                     stderr=subprocess.PIPE)
+		if s.outputFile:
+			res.files.append(fn_out)
 
-			(_, serr) = p.communicate()
-			if p.returncode != 0:
-				raise RuntimeError("error compiling OpenSCAD code: \n" + serr.decode())
-
-			if s.outputFile:
-				res.files.append(fn_out)
-
-			if s.outputRaw or s.outputGeometry:
-				with open(fn_out, "rb") as f:
-					raw_data = f.read()
-					if s.outputRaw:
-						res.data["raw"] = raw_data
-
-		finally:
-			os.chdir(cwd)
-			shutil.rmtree(fn_tmp)
-
-		if s.outputGeometry:
-			soup = FaceSoup()
-			res.data["geometry"] = soup
-
-			if extension == ".stl":
-				soup.load_stl(raw_data.decode())
-			elif extension == ".svg":
-				soup.load_svg_loops(raw_data.decode())
-			else:
-				raise RuntimeError(f"cannot load geometry from {extension} files")
 
 		return res

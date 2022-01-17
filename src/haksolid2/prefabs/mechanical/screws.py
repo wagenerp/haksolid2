@@ -108,12 +108,16 @@ class Screw:
 		rotation = 12 if chute is not None else 0
 		rotation = 30
 		diam = s.thread.d_nut + clearance * 2
-		with ~transform.translate([0, 0, -clearance - protrusion]):
+		protrusion_pos = max(0, protrusion)
+		protrusion_abs = abs(protrusion)
+
+		with ~transform.translate([0, 0, -clearance - protrusion_pos]):
 			(~transform.rotate(rotation) * primitives.cylinder.nz(
-			  d=diam, h=s.thread.h_nut + clearance * 2 + protrusion, segments=6))
+			  d=diam, h=s.thread.h_nut + clearance * 2 + protrusion_abs, segments=6))
 			if chute is not None:
 				(~primitives.cuboid.nzycx([
-				  diam * 3**0.5 / 2, chute, s.thread.h_nut + clearance * 2 + protrusion
+				  diam * 3**0.5 / 2, chute,
+				  s.thread.h_nut + clearance * 2 + protrusion_abs
 				]))
 
 	@dag.DAGModule

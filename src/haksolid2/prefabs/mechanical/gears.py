@@ -39,19 +39,32 @@ class HTDBelt:
 			]))
 
 	@dag.DAGModule
-	def mod_ring(s, count, width):
+	def mod_ring_base(s, count, segments=90):
 
 		d_ring = count * s.pitch / pi
+		with ~operations.difference():
+			~primitives.circle(d=d_ring + s.thickness * 2, segments=360)
+			~primitives.circle(d=d_ring, segments=360)
+		for i in range(count):
+			with (~transform.rotate(i * 360 / count) *
+			      transform.translate(y=-d_ring / 2)):
+				~primitives.rect.cxnyz([s.d_tooth, s.protrusion])
+				(~transform.translate(y=s.protrusion) *
+				 primitives.circle(d=s.d_tooth, segments=segments))
+
+	@dag.DAGModule
+	def mod_gear(s, count, width, segments=90):
+		d_ring = count * s.pitch / pi
+
+		with ~operations.difference():
+			~primitives.circle(d=d_ring + 1e-2, segments=720)
+			~s.mod_ring_base(count, segments=segments)
+
+	@dag.DAGModule
+	def mod_ring(s, count, width, segments=90):
+
 		with ~operations.linear_extrude.n(width):
-			with ~operations.difference():
-				~primitives.circle(d=d_ring + s.thickness * 2, segments=1440)
-				~primitives.circle(d=d_ring, segments=1440)
-			for i in range(count):
-				with (~transform.rotate(i * 360 / count) *
-				      transform.translate(y=-d_ring / 2)):
-					~primitives.rect.cxnyz([s.d_tooth, s.protrusion])
-					(~transform.translate(y=s.protrusion) *
-					 primitives.circle(d=s.d_tooth, segments=90))
+			s.mod_ring_base(count, segments=segments)
 
 
 class Involute:

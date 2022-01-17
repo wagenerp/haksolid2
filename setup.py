@@ -14,4 +14,10 @@ setup(
   maintainer='Peter Wagener',
   maintainer_email='mail@peterwagener.net',
   python_requires='>=3.5',
+  classifiers=[
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Environment :: Console",
+    "Programming Language :: Python :: 3.10",
+  ]
 )

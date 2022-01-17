@@ -167,6 +167,7 @@ class EdgeScrewPattern:
 	def mod_frame_bottom(s, layer):
 
 		h = s.screw.length - layer.thickness
+		if layer.binary: h -= layer.thickness
 		# h = max(s.screw.thread.h_nut + s.minBacking, h / 2)
 		h = s.screw.thread.h_nut + s.minBacking
 
@@ -187,6 +188,7 @@ class EdgeScrewPattern:
 	def mod_frame_top(s, layer):
 
 		h = s.screw.length - layer.thickness
+		if layer.binary: h -= layer.thickness
 		# h = min(h - s.screw.thread.h_nut - s.minBacking, h / 2)
 		h = h - (s.screw.thread.h_nut + s.minBacking)
 

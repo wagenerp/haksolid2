@@ -5,7 +5,9 @@ import warnings
 import numbers
 import numpy
 import math
-from collections import Iterable, namedtuple
+from collections import namedtuple
+from collections.abc import Iterable
+from .cache import RenderSCADCode
 
 layer_record_t = namedtuple("layer_record_t", "ident name description")
 variable_record_t = namedtuple(
@@ -83,7 +85,8 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 	def __init__(s,
 	             layerFilter: metadata.LayerFilter = None,
 	             processPreview=False,
-	             useSegmentCount=True):
+	             useSegmentCount=True,
+	             useRawCache=True):
 		usability.TransformVisitor.__init__(s)
 		s.code = ""
 		s.variables = dict()
@@ -93,6 +96,7 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		s.layerFilter = layerFilter
 		s.processPreview = processPreview
 		s.useSegmentCount = useSegmentCount
+		s.useRawCache = useRawCache
 
 	def clone(s):
 		return OpenSCADcodeGen(s.layerFilter, s.processPreview, s.useSegmentCount)
@@ -398,6 +402,53 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 				return False
 			else:
 				s.addNode("union()")
+		elif s.useRawCache and isinstance(node, metadata.hint_cache):
+			newroot = dag.DAGGroup()
+			for child in node.children:
+				newroot * child
+
+			vdim = metadata.DimensionVisitor()
+			newroot.visitDescendants(vdim)
+			is3d = vdim.has3d or vdim.empty
+
+			print("cache hint node")
+			sub = s.clone()
+			sub.useRawCache = False
+			newroot.visitDescendants(sub)
+			code_nocache = sub.code
+			raw, soup = RenderSCADCode(code_nocache,
+			                           is3d,
+			                           rawCache=True,
+			                           decode=True,
+			                           cacheOnly=True)
+
+			if raw is None:
+				sub = s.clone()
+				newroot.visitDescendants(sub)
+				raw, soup = RenderSCADCode(sub.code,
+				                           is3d,
+				                           rawCache=True,
+				                           decode=True,
+				                           referenceCode=code_nocache)
+				print("early cache miss")
+			else:
+				print("early cache hit")
+
+			s.code += "{"
+			if is3d:
+				vertices = list()
+				faces = list()
+				for face in soup.faces:
+					faces.append(
+					  tuple(range(len(vertices),
+					              len(vertices) + len(face.vertices))))
+					vertices += face.vertices
+				s.code += f"polyhedron(points={scad_repr(vertices)},faces={scad_repr(faces)});"
+			else:
+				for face in soup.faces:
+					s.code += f"polygon(points={scad_repr(face.vertices)});"
+			s.code += "}"
+			return False
 		elif isinstance(node, dag.DAGGroup):
 			s.addNode("union()")
 		elif isinstance(node, metadata.variable):

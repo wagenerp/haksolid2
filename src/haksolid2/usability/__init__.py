@@ -4,3 +4,4 @@ from .flexibleArguments import getFlexibleExtent3, getFlexibleAxis3, getFlexible
 from .visitors import PrintVisitor, TransformVisitor, AllAbsTransformsVisitor
 from .operatorAdapters import OperationsAdapter
 from .shorthands import fn_main
+from .partgroup import partgroup, subpart, subassembly

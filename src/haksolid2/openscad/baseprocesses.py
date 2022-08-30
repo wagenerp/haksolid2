@@ -195,5 +195,4 @@ class OpenSCADBuild(processing.ProcessBase):
 		if s.outputFile:
 			res.files.append(fn_out)
 
-
 		return res

@@ -543,3 +543,18 @@ class OpenSCADcodeGen(usability.TransformVisitor):
 		"""
 
 		s.code = varcode + gluecode + s.code
+
+
+def NodeToGeometry(node):
+	vcodegen = OpenSCADcodeGen()
+	node.visitDescendants(vcodegen)
+	vcodegen.finish()
+
+	vdim = metadata.DimensionVisitor()
+	node.visitDescendants(vdim)
+
+	raw, geo = RenderSCADCode(vcodegen.code,
+	                          vdim.has3d or vdim.empty,
+	                          rawCache=True,
+	                          decode=True)
+	return geo

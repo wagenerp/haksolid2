@@ -9,6 +9,28 @@ def dioffset(r, segments=None):
 	return (operations.offset(-r, round=True, segments=segments) *
 	        operations.offset(r, round=True, segments=segments))
 
+@dag.DAGModule
+def grow(element):
+	with ~operations.minkowski():
+		~dag.DAGGroup() * dag.DAGAnchor()
+		~element
+
+@dag.DAGModule
+def erode(element,diam):
+	with ~operations.difference():
+		~primitives.cuboid(diam*2)
+		with ~grow(element) * operations.difference():
+			~primitives.cuboid(diam*4)
+			~dag.DAGGroup() * dag.DAGAnchor()
+
+@dag.DAGModule
+def closing(element,diam):
+	~erode(element,diam)  * grow(element) * dag.DAGAnchor()
+
+@dag.DAGModule
+def opening(element,diam):
+	~ grow(element) * erode(element,diam) * dag.DAGAnchor()
+
 
 class FlatFactory:
 	def __init__(s):

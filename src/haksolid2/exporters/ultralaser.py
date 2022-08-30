@@ -20,11 +20,20 @@ class Ultralaser(lasercut.LasercutProcess):
 	             material: paradigms.lasercut.LaserMaterial,
 	             contourDepth=None,
 	             contourSpeedFactor=0.5,
-	             horizontal=True,
+	             horizontal=None,
+	             posMode=None,
 	             keyvalues=None,
 	             **kwargs):
 		lasercut.LasercutProcess.__init__(s, **kwargs)
-		s.horizontal = horizontal
+		if posMode is None:
+			if horizontal is None:
+				s.posMode = "horizontal"
+			elif horizontal:
+				s.posMode = "horizontal"
+			else:
+				s.posMode = "vertical"
+		else:
+			s.posMode = posMode
 		s.material = material
 		if keyvalues is None:
 			s.keyvalues = dict()
@@ -123,10 +132,18 @@ class Ultralaser(lasercut.LasercutProcess):
 					maxy = max(-v.y, maxy)
 
 		part_is_horizontal = (maxx - minx > maxy - miny)
-		if (part_is_horizontal != s.horizontal):
-			gen_point = lambda v: f"{maxy-miny-((-v.y)-miny)} {v.x-minx-(maxx-minx)}"
+
+		if s.posMode in {"horizontal", "vertical"}:
+			horizontal = s.posMode == "horizontal"
+			if (part_is_horizontal != horizontal):
+				gen_point = lambda v: f"{maxy-miny-((-v.y)-miny)} {v.x-minx-(maxx-minx)}"
+			else:
+				gen_point = lambda v: f"{v.x-minx} {(-v.y)-miny-(maxy-miny)}"
+		elif s.posMode == "keep":
+			gen_point = lambda v: f"{v.x} {-v.y}"
 		else:
-			gen_point = lambda v: f"{v.x-minx} {(-v.y)-miny-(maxy-miny)}"
+			raise RuntimeError("unknown position mode for ultralaser export: " +
+			                   s.posMode)
 
 		# start ultralaser process, feed it process and geometry data
 		fn_out = os.path.join(s.getOutputDirectory(True), ent.name + ".gcode")
@@ -167,8 +184,8 @@ class Ultralaser(lasercut.LasercutProcess):
 				elif job.mode == lasercut.LasercutLayer.FillZigZag:
 					verb = "fill"
 				f.write(
-				  ("segment %s %s\n" % (" ".join(gen_point(v) for v in face.vertices),
-				   verb)).encode())
+				  ("segment %s %s\n" %
+				   (" ".join(gen_point(v) for v in face.vertices), verb)).encode())
 
 		f.flush()
 		f.close()

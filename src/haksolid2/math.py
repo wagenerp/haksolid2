@@ -2,7 +2,7 @@ import re
 import numpy
 from collections import namedtuple
 from collections.abc import Iterable
-from sympy import cos, sin, pi, asin, acos
+from sympy import cos, sin, tan, pi, asin, acos
 import shlex
 import sympy
 import math
@@ -23,6 +23,33 @@ def cosSin(a, deg=True):
 	else:
 		a = a * math.pi / 180
 		return math.cos(a), math.sin(a)
+
+
+def sin(a, deg=True):
+	if isSymbolic(a):
+		a = a * sympy.pi / 180
+		return sympy.sin(a)
+	else:
+		a = a * math.pi / 180
+		return math.sin(a)
+
+
+def cos(a, deg=True):
+	if isSymbolic(a):
+		a = a * sympy.pi / 180
+		return sympy.cos(a)
+	else:
+		a = a * math.pi / 180
+		return math.cos(a)
+
+
+def tan(a, deg=True):
+	if isSymbolic(a):
+		a = a * sympy.pi / 180
+		return sympy.tan(a)
+	else:
+		a = a * math.pi / 180
+		return math.tan(a)
 
 
 class V(numpy.ndarray):
@@ -65,8 +92,8 @@ class V(numpy.ndarray):
 
 	@classmethod
 	def Cylinder(cls, phi, r=1, z=0):
-		a = pi / 180 * phi
-		return V(cos(a) * r, sin(a) * r, z)
+		c, s = cosSin(phi)
+		return V(c * r, s * r, z)
 
 	def __getitem__(s, k):
 		if isinstance(k, slice):
@@ -448,7 +475,7 @@ class M(numpy.ndarray):
 
 		v1t = V(*(R @ v1)).normal
 
-		angle = acos(v1 @ v1t) * 180 / pi
+		angle = math.acos(v1 @ v1t) * 180 / math.pi
 		if v2 @ v1t > 0:
 			angle = -angle
 
@@ -461,6 +488,23 @@ face_t = namedtuple("face_t", "normal vertices")
 class FaceSoup:
 	def __init__(s):
 		s.faces = list()
+
+	def __str__(s):
+		if len(s.faces) < 1:
+			return "FaceSoup"
+		elif len(s.faces) == 1:
+			return "FaceSoup(" + str(s.faces[0]) + ")"
+		else:
+			return "FaceSoup(\n" + "\n".join("  " + str(f) for f in s.faces) + "\n)"
+
+	def transform(s, T: M):
+		newFaces = list()
+		for face in s.faces:
+			newFaces.append(
+			  face_t((T @ face.normal.xyzn).xyz,
+			         tuple((T @ v.xyno if len(v) < 3 else T @ v.xyzo).xyz
+			               for v in face.vertices)))
+		s.faces = newFaces
 
 	def load_stl(s, code):
 
@@ -504,36 +548,46 @@ class FaceSoup:
 				else:
 					raise SyntaxError("vertex or endloop expected")
 
+	def load_svg_path(s, path):
+		vertices = list()
+		p = V(0, 0)
+		for movop, coords, endop in re.findall(
+		  "([MLml])((?:[ \\t]+(?:[0-9.e-]+),(?:[0-9.e-]+))+)|(z)", path):
+
+			if endop == "z":
+				s.faces.append(face_t(V(0, 0, 1), vertices))
+				vertices = list()
+			elif movop != "":
+				for ixy, (x, y) in enumerate(
+				  re.findall("([0-9.e-]+),([0-9.e-]+)", coords)):
+
+					if movop == "M":
+						p = V(float(x), -float(y))
+					elif movop == "m":
+						if (ixy > 0) and (len(vertices) < 1): vertices.append(p)
+						p = p + V(float(x), -float(y))
+						if (ixy > 0):
+							vertices.append(p)
+
+					elif movop == "L":
+						if len(vertices) < 1: vertices.append(p)
+						p = V(float(x), -float(y))
+						vertices.append(p)
+					elif movop == "l":
+						if len(vertices) < 1: vertices.append(p)
+						p = p + V(float(x), -float(y))
+						vertices.append(p)
+
 	def load_svg_loops(s, code):
-		for stmt in re.findall("<path\\s+d=\"(.*?)\".*?/>", code, re.DOTALL):
-			vertices = list()
-			p = V(0, 0)
-			for movop, coords, endop in re.findall(
-			  "([MLml])((?:[ \\t]+(?:[0-9.e-]+),(?:[0-9.e-]+))+)|(z)", stmt):
+		for path in re.findall("<path\\s+d=\"(.*?)\".*?/>", code, re.DOTALL):
+			s.load_svg_path(path)
 
-				if endop == "z":
-					s.faces.append(face_t(V(0, 0, 1), vertices))
-					vertices = list()
-				elif movop != "":
-					for ixy, (x, y) in enumerate(
-					  re.findall("([0-9.e-]+),([0-9.e-]+)", coords)):
-
-						if movop == "M":
-							p = V(float(x), -float(y))
-						elif movop == "m":
-							if (ixy > 0) and (len(vertices) < 1): vertices.append(p)
-							p = p + V(float(x), -float(y))
-							if (ixy > 0):
-								vertices.append(p)
-
-						elif movop == "L":
-							if len(vertices) < 1: vertices.append(p)
-							p = V(float(x), -float(y))
-							vertices.append(p)
-						elif movop == "l":
-							if len(vertices) < 1: vertices.append(p)
-							p = p + V(float(x), -float(y))
-							vertices.append(p)
+	def computeVolume(s):
+		res = 0
+		for face in s.faces:
+			a, b, c = face.vertices
+			res += -c.x * b.y * a.z + b.x * c.y * a.z + c.x * a.y * b.z - a.x * c.y * b.z - b.x * a.y * c.z + a.x * b.y * c.z
+		return res / 6.0
 
 
 class aabb_t:

@@ -116,7 +116,11 @@ class BoundingBoxVisitor(usability.TransformVisitor):
 		elif isinstance(node, operations.intersection):
 
 			if len(children) < 1: return aabb_t.Empty()
-			else: return children[0]
+			else:
+				res = children[0]
+				for box in children[1:]:
+					res = res.intersection(box)
+				return res
 
 		elif isinstance(node, operations.minkowski):
 

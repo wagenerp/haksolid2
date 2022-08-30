@@ -3,6 +3,7 @@ from .. import usability
 from .. import transform
 from .. import primitives
 from ..math import *
+from collections import namedtuple
 
 
 class ExtrusionNode(dag.DAGNode):
@@ -96,3 +97,75 @@ class CylinderOffsetFactory:
 
 linear_extrude = usability.CylinderAnchorPattern(
   CylinderOffsetFactory(LinearExtrude))
+
+SweepRing = namedtuple("SweepRing", "transform node")
+
+
+@dag.DAGModule
+def sweep(*rings):
+
+	faces = list()
+	if True:
+		from ..openscad.codegen import NodeToGeometry
+
+		rings = tuple(rings)
+		geometries = tuple(NodeToGeometry(ring.node) for ring in rings)
+
+		for geo, ring in zip(geometries, rings):
+			if len(geo.faces) != 1:
+				raise RuntimeError("cannot sweep non-contiguous geometry")
+			geo.transform(ring.transform)
+			faces.append(geo.faces[0])
+
+	allVertices = sum((face.vertices for face in faces), tuple())
+	allFaces = list()
+
+	O1 = 0
+
+	for face0, face1 in zip(faces, faces[1:]):
+
+		vex0 = face0.vertices
+		vex1 = face1.vertices
+		n0 = len(vex0)
+		n1 = len(vex1)
+		O0 = O1
+		O1 = O0 + n0
+
+		i0 = 0
+		o1 = min(range(len(face1.vertices)), key=lambda i: (vex0[i0] - vex1[i]).sqr)
+
+		i1 = 0
+
+		v0 = vex0[i0]
+		v1 = vex1[o1]
+
+		while (i0 <= n0) and (i1 <= n1):
+			j0 = i0 % n0
+			j1 = (i1 + o1) % n1
+
+			k0 = (j0 + 1) % n0
+			k1 = (j1 + 1) % n1
+
+			w0 = vex0[k0]
+			w1 = vex1[k1]
+
+			if (w0 - v1).sqr < (v0 - w1).sqr:
+				allFaces.append((O0 + j0, O1 + j1, O0 + k0))
+				i0 += 1
+				v0 = w0
+			else:
+				allFaces.append((O0 + j0, O1 + j1, O1 + k1))
+				i1 += 1
+				v1 = w1
+
+	for ring, offset in ((faces[0], 0), (faces[-1], O1)):
+
+		ring = range(offset, offset + len(ring.vertices))
+		ring = tuple(reversed(ring)) if offset > 0 else tuple(ring)
+		v0 = ring[0]
+		v1 = ring[1]
+		for i in ring[2:]:
+			allFaces.append((v0, v1, i))
+			v1 = i
+
+	~primitives.polyhedron(allVertices, allFaces)

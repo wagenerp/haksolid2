@@ -53,7 +53,7 @@ def check_customizer():
 	for fn, preset in customizerPresets:
 		if fn in parameterSets: continue
 		try:
-			parametersets[fn] = PresetFile(fn)
+			parameterSets[fn] = PresetFile(fn)
 		except (OSError, json.JSONDecodeError, jsonschema.ValidationError) as e:
 			raise cli.clex(f"error loading customizer file {fn}: {e}")
 
